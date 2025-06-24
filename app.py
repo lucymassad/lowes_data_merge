@@ -27,10 +27,8 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     def format_date(series): return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
 
     orders.columns = orders.columns.astype(str).str.strip()
-
-    # Check that required columns are present before continuing
-    required_cols = ["PO Number", "PO Line#"]
-    missing = [col for col in required_cols if col not in orders.columns]
+    required_columns = ["PO Number", "PO Line#"]
+    missing = [col for col in required_columns if col not in orders.columns]
     if missing:
         st.error(f"❌ Your Orders file is missing required column(s): {missing}")
         st.stop()
@@ -41,8 +39,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Unit Price"] = orders["Unit Price"].replace('[\$,]', '', regex=True).astype(float)
     orders["Merch Total"] = orders["Qty Ordered"] * orders["Unit Price"]
     orders["VBU Name"] = pd.to_numeric(orders["Vendor #"], errors="coerce").map(vbu_mapping)
+
+    # Format only currency columns as text
     orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
     orders["Merch Total"] = orders["Merch Total"].apply(format_currency)
+
     for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
         orders[col] = format_date(orders[col])
 
@@ -66,10 +67,13 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
             "Discounted Amounted_Discount Amount": "first",
             "Invoice Total": "first"}))
     invoice_collapsed["Invoice Total"] = pd.to_numeric(
-        invoice_collapsed["Invoice Total"].replace('[\$,]', '', regex=True), errors="coerce").apply(format_currency)
+        invoice_collapsed["Invoice Total"].replace('[\$,]', '', regex=True), errors="coerce")
     invoice_collapsed["Discounted Amounted_Discount Amount"] = pd.to_numeric(
-        invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\$,]', '', regex=True), errors="coerce").apply(format_currency)
+        invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\$,]', '', regex=True), errors="coerce")
     invoice_collapsed["Invoice Date"] = format_date(invoice_collapsed["Invoice Date"])
+
+    invoice_collapsed["Invoice Total"] = invoice_collapsed["Invoice Total"].apply(format_currency)
+    invoice_collapsed["Discounted Amounted_Discount Amount"] = invoice_collapsed["Discounted Amounted_Discount Amount"].apply(format_currency)
 
     orders["PO_clean"] = orders["PO Number"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
     invoice_collapsed["PO_clean"] = invoice_collapsed["Retailers PO #"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
@@ -95,6 +99,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "Invoice Number": "Invoice#",
         "Discounted Amounted_Discount Amount": "Invoice Disc.",
         "BOL": "BOL#"})
+
     final_cols = [
         "PO#", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Qty Ordered",
         "Unit Price", "Merch Total", "Ship to Name", "Ship To State", "Requested Delivery Date",
@@ -102,12 +107,32 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "Invoice#", "Invoice Date", "Invoice Disc.", "Invoice Total"]
     orders = orders.reindex(columns=final_cols).fillna("")
 
+    # Generate timestamped filename
     tz = pytz.timezone("America/New_York")
     timestamp = datetime.now(tz).strftime("%Y-%m-%d_%H%M")
-    filename = f"Lowes_Merged_2025-06-24_1815.xlsx"
+    filename = f"Lowes_Merged_{timestamp}.xlsx"
 
+    # Export to Excel with formatting
     output = BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         orders.to_excel(writer, index=False, sheet_name="Orders")
+        workbook = writer.book
+        worksheet = writer.sheets["Orders"]
+
+        # Header formatting
+        header_format = workbook.add_format({
+            "bold": True,
+            "align": "left",
+            "valign": "vcenter"
+        })
+        for col_num, value in enumerate(orders.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+
+        # Auto column width
+        for i, column in enumerate(orders.columns):
+            max_width = max(orders[column].astype(str).map(len).max(), len(column)) + 2
+            worksheet.set_column(i, i, max_width)
+
+    # Show download
     st.success("✅ File processed!")
     st.download_button("📥 Download Merged Excel File", data=output.getvalue(), file_name=filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
