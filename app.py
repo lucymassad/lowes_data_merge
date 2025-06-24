@@ -111,4 +111,3 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
   st.caption(f"Approx. file size: {file_size_kb:.1f} KB")
   st.info(f"Total merged rows: {len(orders):,}")
   st.download_button("Download Merged Excel File",data=output.getvalue(),file_name=filename,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-  st.balloons()
