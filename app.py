@@ -27,6 +27,14 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     def format_date(series): return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
 
     orders.columns = orders.columns.astype(str).str.strip()
+
+    # Check that required columns are present before continuing
+    required_cols = ["PO Number", "PO Line#"]
+    missing = [col for col in required_cols if col not in orders.columns]
+    if missing:
+        st.error(f"❌ Your Orders file is missing required column(s): {missing}")
+        st.stop()
+
     orders = orders.sort_values(["PO Number", "PO Line#"]).ffill().infer_objects(copy=False)
     orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
@@ -38,6 +46,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
         orders[col] = format_date(orders[col])
 
+    shipment.columns = shipment.columns.astype(str).str.strip()
     shipment = shipment.rename(columns={
         "PO #": "PO Number",
         "Buyer Item #": "Buyers Catalog or Stock Keeping #"})
