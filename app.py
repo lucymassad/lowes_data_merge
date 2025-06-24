@@ -26,7 +26,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     def format_currency(x): return "" if pd.isna(x) else f"${x:,.2f}"
     def format_date(series): return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
 
-    orders.columns = orders.columns.str.strip()
+    orders.columns = orders.columns.astype(str).str.strip()
     orders = orders.sort_values(["PO Number", "PO Line#"]).ffill().infer_objects(copy=False)
     orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
@@ -48,7 +48,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "ASN Date", "Ship Date", "BOL", "SCAC"]]
     orders = orders.merge(shipment, on=["PO Number", "Buyers Catalog or Stock Keeping #"], how="left")
 
-    invoice.columns = invoice.columns.str.strip()
+    invoice.columns = invoice.columns.astype(str).str.strip()
     invoice_collapsed = (
         invoice.groupby("Invoice Number", as_index=False)
         .agg({
