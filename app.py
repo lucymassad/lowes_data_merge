@@ -6,7 +6,7 @@ import pytz
 
 st.set_page_config(page_title="Lowe's Merge Tool", layout="wide")
 
-st.title("Lowe's Data Merge Tool")
+st.title("Merge Lowes Data Files")
 st.markdown("Upload your **Orders**, **Shipments**, and **Invoices** files to generate a clean, merged Excel report.")
 
 uploaded_orders=st.file_uploader("Upload Orders File (.xlsx)", type="xlsx")
