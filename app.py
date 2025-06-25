@@ -106,7 +106,12 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     for col in ["ASN Date", "Ship Date"]:
         shipments[col] = pd.to_datetime(shipments[col], errors="coerce")
 
-    shipment_collapsed = shipments.groupby(
+    # Deduplicate shipments before collapsing
+    shipments_deduped = shipments.drop_duplicates(
+        subset=["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location", "ASN Date", "Ship Date", "BOL", "SCAC"]
+    )
+
+    shipment_collapsed = shipments_deduped.groupby(
         ["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"], as_index=False
     ).agg({
         "ASN Date": "max",
