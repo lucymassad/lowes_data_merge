@@ -117,11 +117,13 @@ shipment_collapsed=(shipments.groupby([
 shipment_collapsed["ASN Date"]=format_date(shipment_collapsed["ASN Date"])
 shipment_collapsed["Ship Date"]=format_date(shipment_collapsed["Ship Date"])
 
-orders=orders.merge(
+orders = orders.merge(
   shipment_collapsed,
-  on=["PO Number","Buyers Catalog or Stock Keeping #","Ship To Location"],
+  on=["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"],
   how="left"
 )
+
+progress.progress(60, text="Merging Invoices...")
 
   progress.progress(60,text="Merging Invoices...")
   invoices.columns=invoices.columns.astype(str).str.strip()
