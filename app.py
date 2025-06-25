@@ -70,7 +70,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders = orders.drop_duplicates(subset=["PO Number", "PO Line#", "Buyers Catalog or Stock Keeping #", "Vendor #"])
 
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
-    orders["Unit Price"] = orders["Unit Price"].replace('[\\$,]', '', regex=True).astype(float)
+    orders["Unit Price"] = orders["Unit Price"].replace('[\$,]', '', regex=True).astype(float)
 
     orders["Vendor # Clean"] = orders["Vendor #"].astype(str).str.extract(r"(\d+)")[0].astype(float)
     orders["VBU Name"] = orders["Vendor # Clean"].map(vbu_mapping)
@@ -126,17 +126,17 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     })
 
     invoice_collapsed["Invoice Total"] = pd.to_numeric(
-        invoice_collapsed["Invoice Total"].replace('[\\$,]', '', regex=True), errors="coerce"
+        invoice_collapsed["Invoice Total"].replace('[\$,]', '', regex=True), errors="coerce"
     ).apply(format_currency)
 
     invoice_collapsed["Discounted Amounted_Discount Amount"] = pd.to_numeric(
-        invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\\$,]', '', regex=True), errors="coerce"
+        invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\$,]', '', regex=True), errors="coerce"
     ).apply(format_currency)
 
     invoice_collapsed["Invoice Date"] = format_date(invoice_collapsed["Invoice Date"])
 
-    orders["PO_clean"] = orders["PO Number"].astype(str).str.strip().str.replace(r"\\.0$", "", regex=True)
-    invoice_collapsed["PO_clean"] = invoice_collapsed["Retailers PO #"].astype(str).str.strip().str.replace(r"\\.0$", "", regex=True)
+    orders["PO_clean"] = orders["PO Number"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+    invoice_collapsed["PO_clean"] = invoice_collapsed["Retailers PO #"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
 
     orders = orders.merge(
         invoice_collapsed[[
@@ -187,6 +187,10 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "ASN Date", "Ship Date", "BOL#", "SCAC", "Invoice#", "Invoice Date",
         "Invoice Disc.", "Invoice Total", "Month Filter", "Year Filter", "Quarter Filter"
     ]
+
+    for col in final_cols:
+        if col not in orders.columns:
+            orders[col] = ""
 
     orders = orders.reindex(columns=final_cols).fillna("")
 
