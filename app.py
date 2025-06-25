@@ -109,7 +109,8 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     shipments["ASN Date"] = format_date(shipments["ASN Date"])
     shipments["Ship Date"] = format_date(shipments["Ship Date"])
 
-    orders = orders.merge(shipments, how="left", on=["PO Number", "Item#"])
+    orders = orders.merge(shipments, how="left", on=["PO Number", "Item"])
+    orders.rename(columns={"BOL": "BOL#"}, inplace=True)
 
     progress.progress(60, text="Merging Invoices...")
 
