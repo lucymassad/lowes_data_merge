@@ -115,24 +115,25 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     progress.progress(60, text="Merging Invoices...")
 
-    invoices["PO#"] = invoices["PO or Vendor Number"]
-    invoices["Item#"] = invoices["Buyer's Catalog or Stock Keeping #"]
-    invoices["Vendor Item#"] = invoices["Vendor Style"]
+    invoices = invoices.rename(columns={"Retailers PO #": "PO Number", "Buyer's Catalog or Stock Keeping #": "Item#"})
+    invoice_merge_cols = ["PO Number", "Item#", "Vendor Item#", "Invoice Number", "Invoice Date",
+                          "Invoice Total", "Discounted Amounted_Discount Amount"]
+    invoices = invoices[invoice_merge_cols]
 
-    invoices["Invoice Total"] = pd.to_numeric(invoices["Invoice Total"].replace('[\$,]', '', regex=True), errors="coerce").apply(format_currency)
-    invoices["Invoice Disc."] = pd.to_numeric(invoices["Invoice purpose"].replace('[\$,]', '', regex=True), errors="coerce").apply(format_currency)
+    invoices["Invoice Total"] = pd.to_numeric(invoices["Invoice Total"].replace('[\$,]', '', regex=True), errors="coerce")
+    invoices["Discounted Amounted_Discount Amount"] = pd.to_numeric(invoices["Discounted Amounted_Discount Amount"].replace('[\$,]', '', regex=True), errors="coerce")
+    invoices["Invoice Total"] = invoices["Invoice Total"].apply(format_currency)
+    invoices["Discounted Amounted_Discount Amount"] = invoices["Discounted Amounted_Discount Amount"].apply(format_currency)
     invoices["Invoice Date"] = format_date(invoices["Invoice Date"])
 
-    invoice_merge_cols = ["PO#", "Item#", "Vendor Item#", "Invoice Number", "Invoice Date", "Invoice Disc.", "Invoice Total"]
-    orders = orders.merge(invoices[invoice_merge_cols], on=["PO Number", "Item#", "Vendor Item#"], how="left")
-    orders.rename(columns={"Invoice Number": "Invoice#"}, inplace=True)
+    orders = orders.merge(invoices, on=["PO Number", "Item#", "Vendor Item#"], how="left")
+    orders.rename(columns={"Discounted Amounted_Discount Amount": "Invoice Disc.", "Invoice Number": "Invoice#"}, inplace=True)
 
-    progress.progress(80, text="Applying logic and formatting...")
+    progress.progress(80, text="Finalizing output...")
 
     orders["Fulfillment Status"] = "Not Invoiced"
     orders.loc[pd.notna(orders["Invoice#"]), "Fulfillment Status"] = "Invoiced"
     orders.loc[(pd.notna(orders["Ship Date"]) & (orders["Fulfillment Status"] == "Not Invoiced")), "Fulfillment Status"] = "Shipped Not Invoiced"
-
     orders["Late Ship"] = pd.to_datetime(orders["Ship Date"], errors="coerce") > pd.to_datetime(orders["Requested Delivery Date"], errors="coerce")
     orders["Late Ship"] = orders["Late Ship"].map({True: "Yes", False: "No"}).fillna("")
 
@@ -142,20 +143,17 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     final_cols = [
         "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
-        "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "Ship To Name", "Ship To State",
-        "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "BOL", "SCAC",
-        "Invoice#", "Invoice Date", "Invoice Disc.", "Invoice Total", "Month Filter", "Year Filter", "Quarter Filter"
+        "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name",
+        "Ship To State", "Requested Delivery Date", "Fulfillment Status", "Late Ship",
+        "ASN Date", "Ship Date", "BOL#", "SCAC", "Invoice#", "Invoice Date", "Invoice Disc.", "Invoice Total",
+        "Month Filter", "Year Filter", "Quarter Filter"
     ]
 
     for col in final_cols:
         if col not in orders.columns:
             orders[col] = ""
 
-    orders = orders[final_cols].fillna("")
-    # Drop temp sorting columns
-    orders.drop(columns=["PO Date Sortable", "PO Num Sort"], inplace=True)
-
-    progress.progress(100, text="Formatting and exporting Excel file...")
+    orders = orders.reindex(columns=final_cols).fillna("")
 
     tz = pytz.timezone("America/New_York")
     timestamp = datetime.now(tz).strftime("%Y-%m-%d_%H%M")
@@ -172,7 +170,8 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
             worksheet.write(0, idx, col, header_format)
 
     file_size_kb = len(output.getvalue()) / 1024
-    st.success("File processed ✅")
+    progress.progress(100, text="✅ Complete!")
+    st.success("File processed")
     st.caption(f"Approx. file size: {file_size_kb:.1f} KB")
     st.info(f"Total merged rows: {len(orders):,}")
     st.download_button(
