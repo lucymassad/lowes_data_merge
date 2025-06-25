@@ -81,12 +81,22 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         st.stop()
 
     orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
-    orders = orders.sort_values(["PO Number", "PO Line#"]).ffill().infer_objects(copy=False)
+
+    # Sort to group rows by PO and Vendor before filling
+    orders = orders.sort_values(["PO Number", "Vendor #", "PO Line#"], ascending=[True, True, True])
+    orders = orders.ffill().infer_objects(copy=False)
+
+    # Keep only real line items
     orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
+
+    # Avoid vendor duplication on same line item
+    orders = orders.drop_duplicates(subset=["PO Number", "PO Line#", "Buyers Catalog or Stock Keeping #", "Vendor #"])
+
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
     orders["Unit Price"] = orders["Unit Price"].replace('[\$,]', '', regex=True).astype(float)
     orders["VBU Name"] = pd.to_numeric(orders["Vendor #"], errors="coerce").map(vbu_mapping)
     orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
+
     for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
         orders[col] = format_date(orders[col])
 
