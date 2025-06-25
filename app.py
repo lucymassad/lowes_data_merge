@@ -127,47 +127,38 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     progress.progress(60, text="Merging Invoices...")
 
     invoices.columns = invoices.columns.astype(str).str.strip()
-    st.write("Invoice file columns:", invoices.columns.tolist())  # Debug aid
-
-    discount_col = next((col for col in invoices.columns if "discount" in col.lower()), None)
-    invoice_agg = {
+    invoice_collapsed = invoices.groupby("Invoice Number", as_index=False).agg({
         "Retailers PO #": "first",
         "Invoice Date": "first",
+        "Discounted Amounted_Discount Amount": "first",
         "Invoice Total": "first"
-    }
-    if discount_col:
-        invoice_agg[discount_col] = "first"
-
-    invoice_collapsed = invoices.groupby("Invoice Number", as_index=False).agg(invoice_agg)
+    })
 
     invoice_collapsed["Invoice Total"] = pd.to_numeric(
         invoice_collapsed["Invoice Total"].replace('[\$,]', '', regex=True), errors="coerce"
     ).apply(format_currency)
 
-    if discount_col:
-        invoice_collapsed[discount_col] = pd.to_numeric(
-            invoice_collapsed[discount_col].replace('[\$,]', '', regex=True), errors="coerce"
-        ).apply(format_currency)
+    invoice_collapsed["Discounted Amounted_Discount Amount"] = pd.to_numeric(
+        invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\$,]', '', regex=True), errors="coerce"
+    ).apply(format_currency)
 
     invoice_collapsed["Invoice Date"] = format_date(invoice_collapsed["Invoice Date"])
 
     orders["PO_clean"] = orders["PO Number"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
     invoice_collapsed["PO_clean"] = invoice_collapsed["Retailers PO #"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
 
-    if discount_col:
-        orders = orders.merge(
-            invoice_collapsed[["PO_clean", "Invoice Number", "Invoice Date", discount_col, "Invoice Total"]],
-            on="PO_clean", how="left"
-        )
-        orders = orders.rename(columns={discount_col: "Invoice Disc."})
-    else:
-        orders = orders.merge(
-            invoice_collapsed[["PO_clean", "Invoice Number", "Invoice Date", "Invoice Total"]],
-            on="PO_clean", how="left"
-        )
-        orders["Invoice Disc."] = ""
+    orders = orders.merge(
+        invoice_collapsed[[
+            "PO_clean", "Invoice Number", "Invoice Date",
+            "Discounted Amounted_Discount Amount", "Invoice Total"
+        ]],
+        on="PO_clean",
+        how="left"
+    ).drop(columns="PO_clean")
 
-    orders.drop(columns="PO_clean", inplace=True)
+    orders = orders.rename(columns={
+        "Discounted Amounted_Discount Amount": "Invoice Disc."
+    })
 
     progress.progress(80, text="Finalizing output...")
 
