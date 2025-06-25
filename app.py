@@ -4,7 +4,7 @@ from io import BytesIO
 from datetime import datetime
 import pytz
 
-st.set_page_config(page_title="Lowe's Merge Tool", layout="wide")
+st.set_page_config(page_title="Lowe's Data Merge Tool", layout="wide")
 st.title("Merge Lowes Data Files")
 st.markdown("Upload your **Orders**, **Shipments**, and **Invoices** files to generate a merged Excel report.")
 
@@ -89,17 +89,14 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
 
     headers = orders[
-        (orders["PO Line#"].isna()) & (orders["Qty Ordered"].isna())
-    ].copy()
+        (orders["PO Line#"].isna()) & (orders["Qty Ordered"].isna())].copy()
 
     details = orders[
-        (orders["PO Line#"].notna()) | (orders["Qty Ordered"].notna())
-    ].copy()
+        (orders["PO Line#"].notna()) | (orders["Qty Ordered"].notna())].copy()
 
     meta_cols = [
         "PO Number", "PO Date", "Vendor #",
-        "Ship To Name", "Ship To State", "Requested Delivery Date"
-    ]
+        "Ship To Name", "Ship To State", "Requested Delivery Date"]
 
     headers_meta = headers[meta_cols].drop_duplicates(subset=["PO Number"])
 
@@ -109,7 +106,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         orders[col] = orders[col].combine_first(orders[f"{col}_hdr"])
         orders.drop(columns=[f"{col}_hdr"], inplace=True)
 
-    # fields
+    #fields
     orders["Item#"] = orders["Buyers Catalog or Stock Keeping #"]
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
     orders["Item Name"] = orders["Product/Item Description"]
@@ -153,8 +150,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "Invoice Number": "first",
         "Invoice Date": "first",
         "Invoice Total": "first",
-        "Discounted Amounted_Discount Amount": "first"
-    }).reset_index()
+        "Discounted Amounted_Discount Amount": "first"}).reset_index()
 
     orders = orders.merge(invoice_grouped, on="PO Number", how="left")
     orders.rename(columns={"Discounted Amounted_Discount Amount": "Invoice Disc.", "Invoice Number": "Invoice#"}, inplace=True)
@@ -198,7 +194,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     file_size_kb = len(output.getvalue()) / 1024
     progress.progress(100, text="Complete")
-    st.success("File processed")
+    st.success(f"✅ Your file is saved as **{filename}**")
     st.caption(f"Approx. file size: {file_size_kb:.1f} KB")
     st.info(f"Total merged rows: {len(orders):,}")
     st.download_button(
