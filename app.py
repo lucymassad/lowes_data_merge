@@ -38,6 +38,10 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     shipments.columns = shipments.columns.str.strip()
     invoices.columns = invoices.columns.str.strip()
 
+    # Fill blank Record Type with Invoice Purpose if missing
+    if "Record Type" in invoices.columns and "Invoice purpose" in invoices.columns:
+        invoices["Record Type"] = invoices["Record Type"].fillna(invoices["Invoice purpose"])
+
     progress.progress(20, text="Cleaning orders and metadata...")
 
     #mappings
