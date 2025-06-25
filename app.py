@@ -57,76 +57,81 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "147992": "Sunniland", "148054": "Sunniland"
     }
 
-    def format_currency(x): return "" if pd.isna(x) else f"${x:,.2f}"
+def format_currency(x):
+    return "" if pd.isna(x) else f"${x:,.2f}"
 
-    def format_date(series): return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
-
-    orders.columns = orders.columns.astype(str).str.strip()
-    required_cols = ["PO Number", "PO Line#"]
-    missing = [col for col in required_cols if col not in orders.columns]
-    if missing:
-        st.error(f"Your {missing} is either missing or in the incorrect format.")
-        st.stop()
-
-    orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
-    orders = orders.sort_values(["PO Date", "PO# Num"], ascending=[False, False]).ffill().infer_objects(copy=False)
-    orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
-    orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
-    orders["Unit Price"] = orders["Unit Price"].replace('[\\$,]', '', regex=True).astype(float)
-    orders["VBU Name"] = pd.to_numeric(orders["Vendor #"], errors="coerce").map(vbu_mapping)
-    orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
-    for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
-        orders[col] = format_date(orders[col])
-
-    orders["Palettes"] = orders["Buyers Catalog or Stock Keeping #"].map(palette_mapping)
-    orders["PO Line#"] = orders["PO Line#"]
-    orders["Ship To Code"] = orders["Ship To Location"]
-    orders["Vendor Item#"] = orders["Buyers Catalog or Stock Keeping #"].map(vendor_item_mapping)
-    orders["Item Type"] = orders["Buyers Catalog or Stock Keeping #"].map(item_type_mapping)
-    orders["Month Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.month
-    orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
-    orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str).str.replace(".0", "", regex=False)
-
-    progress.progress(40, text="Merging Shipments...")
-    shipments = shipments.rename(columns={
-        "PO #": "PO Number",
-        "Buyer Item #": "Buyers Catalog or Stock Keeping #",
-        "Location #": "Ship To Location"
-    })
+def format_date(series):
+    return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
 
 def dedupe_columns(cols):
-  seen = {}
-  new_cols = []
-  for col in cols:
-    if col not in seen:
-      seen[col] = 0
-      new_cols.append(col)
-    else:
-      seen[col] += 1
-      new_cols.append(f"{col}.{seen[col]}")
-  return new_cols
+    seen = {}
+    new_cols = []
+    for col in cols:
+        if col not in seen:
+            seen[col] = 0
+            new_cols.append(col)
+        else:
+            seen[col] += 1
+            new_cols.append(f"{col}.{seen[col]}")
+    return new_cols
+
+orders.columns = orders.columns.astype(str).str.strip()
+required_cols = ["PO Number", "PO Line#"]
+missing = [col for col in required_cols if col not in orders.columns]
+if missing:
+    st.error(f"Your {missing} is either missing or in the incorrect format.")
+    st.stop()
+
+orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
+orders = orders.sort_values(["PO Date", "PO# Num"], ascending=[False, False]).ffill().infer_objects(copy=False)
+orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
+orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
+orders["Unit Price"] = orders["Unit Price"].replace('[\\$,]', '', regex=True).astype(float)
+orders["VBU Name"] = pd.to_numeric(orders["Vendor #"], errors="coerce").map(vbu_mapping)
+orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
+
+for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
+    orders[col] = format_date(orders[col])
+
+orders["Palettes"] = orders["Buyers Catalog or Stock Keeping #"].map(palette_mapping)
+orders["PO Line#"] = orders["PO Line#"]
+orders["Ship To Code"] = orders["Ship To Location"]
+orders["Vendor Item#"] = orders["Buyers Catalog or Stock Keeping #"].map(vendor_item_mapping)
+orders["Item Type"] = orders["Buyers Catalog or Stock Keeping #"].map(item_type_mapping)
+orders["Month Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.month
+orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
+orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str).str.replace(".0", "", regex=False)
+
+progress.progress(40, text="Merging Shipments...")
+
+shipments = shipments.rename(columns={
+    "PO #": "PO Number",
+    "Buyer Item #": "Buyers Catalog or Stock Keeping #",
+    "Location #": "Ship To Location"
+})
 
 shipments.columns = dedupe_columns(shipments.columns)
 
-for col in ["ASN Date","Ship Date"]:
-  shipments[col]=pd.to_datetime(shipments[col],errors="coerce")
+for col in ["ASN Date", "Ship Date"]:
+    shipments[col] = pd.to_datetime(shipments[col], errors="coerce")
 
-shipment_collapsed=(shipments.groupby([
-  "PO Number","Buyers Catalog or Stock Keeping #","Ship To Location"],as_index=False)
-  .agg({
-    "ASN Date":"max",
-    "Ship Date":"max",
-    "BOL":lambda x: "/".join(sorted(set(x.dropna()))),
-    "SCAC":lambda x: "/".join(sorted(set(x.dropna())))
-  }))
+shipment_collapsed = (
+    shipments.groupby(["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"], as_index=False)
+    .agg({
+        "ASN Date": "max",
+        "Ship Date": "max",
+        "BOL": lambda x: "/".join(sorted(set(x.dropna()))),
+        "SCAC": lambda x: "/".join(sorted(set(x.dropna())))
+    })
+)
 
-shipment_collapsed["ASN Date"]=format_date(shipment_collapsed["ASN Date"])
-shipment_collapsed["Ship Date"]=format_date(shipment_collapsed["Ship Date"])
+shipment_collapsed["ASN Date"] = format_date(shipment_collapsed["ASN Date"])
+shipment_collapsed["Ship Date"] = format_date(shipment_collapsed["Ship Date"])
 
 orders = orders.merge(
-  shipment_collapsed,
-  on=["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"],
-  how="left"
+    shipment_collapsed,
+    on=["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"],
+    how="left"
 )
 
 progress.progress(60, text="Merging Invoices...")
