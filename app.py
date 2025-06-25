@@ -72,7 +72,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
     orders["Unit Price"] = orders["Unit Price"].replace('[\\$,]', '', regex=True).astype(float)
 
-    orders["Vendor # Clean"] = orders["Vendor #"].str.extract(r"(\\d+)")[0].astype(float)
+    orders["Vendor # Clean"] = orders["Vendor #"].astype(str).str.extract(r"(\d+)")[0].astype(float)
     orders["VBU Name"] = orders["Vendor # Clean"].map(vbu_mapping)
     orders["VBU#"] = orders["Vendor #"]
     orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
