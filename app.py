@@ -6,7 +6,7 @@ import pytz
 
 st.set_page_config(page_title="Lowe's Data Merge Tool", layout="wide")
 st.title("Merge Lowes Data Files")
-st.markdown("Upload your **Orders**, **Shipments**, and **Invoices** files to generate a merged Excel report.")
+st.markdown("Upload **Orders**, **Shipments**, and **Invoices** files to generate a merged Excel report. Files must be in the original SPS downloaded format.")
 
 #helpers
 def format_currency(x):
@@ -36,7 +36,7 @@ uploaded_shipments = st.file_uploader("Upload Shipments File (.xlsx)", type="xls
 uploaded_invoices = st.file_uploader("Upload Invoices File (.xlsx)", type="xlsx")
 
 if uploaded_orders and uploaded_shipments and uploaded_invoices:
-    progress = st.progress(0, text="Reading files...")
+    progress = st.progress(0, text="Reading Files...")
 
     orders = pd.read_excel(uploaded_orders, dtype=str)
     shipments = pd.read_excel(uploaded_shipments, dtype=str)
@@ -50,7 +50,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     if "Record Type" in invoices.columns and "Invoice purpose" in invoices.columns:
         invoices["Record Type"] = invoices["Record Type"].fillna(invoices["Invoice purpose"])
 
-    progress.progress(20, text="Cleaning orders and metadata...")
+    progress.progress(20, text="Cleaning Orders...")
 
     #mappings
     vbu_mapping = {118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville",
@@ -82,7 +82,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "120019": "Sunniland", "1240180": "Sunniland", "91299": "Sunniland", "335457": "Sunniland",
         "147992": "Sunniland", "148054": "Sunniland"}
 
-    # Normalize column names for consistency
+    #normalize columns
     orders.columns = orders.columns.str.strip().str.replace("PO Line #", "PO Line#", regex=False)
 
     # clean
@@ -96,18 +96,13 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["PO Line#"] = pd.to_numeric(orders["PO Line#"], errors="coerce")
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
 
-    headers = orders[
-        (orders["PO Line#"].isna()) & (orders["Qty Ordered"].isna())
-    ].copy()
+    headers = orders[(orders["PO Line#"].isna()) & (orders["Qty Ordered"].isna())].copy()
 
-    details = orders[
-        (orders["PO Line#"].notna()) | (orders["Qty Ordered"].notna())
-    ].copy()
+    details = orders[(orders["PO Line#"].notna()) | (orders["Qty Ordered"].notna())].copy()
 
     meta_cols = [
         "PO Number", "PO Date", "Vendor #",
-        "Ship To Name", "Ship To State", "Requested Delivery Date"
-    ]
+        "Ship To Name", "Ship To State", "Requested Delivery Date"]
 
     headers_meta = headers[meta_cols].drop_duplicates(subset=["PO Number"])
 
@@ -117,7 +112,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         orders[col] = orders[col].combine_first(orders[f"{col}_hdr"])
         orders.drop(columns=[f"{col}_hdr"], inplace=True)
 
-        # fields
+    #fields
     orders["Item#"] = orders["Buyers Catalog or Stock Keeping #"]
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
     orders["Item Name"] = orders["Product/Item Description"]
@@ -159,13 +154,13 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     if "Merchandise Total" in invoices.columns:
         invoices["Merchandise Total"] = pd.to_numeric(
             invoices["Merchandise Total"].replace('[\\$,]', '', regex=True),
-            errors="coerce"
-        ).round(2)
+            errors="coerce").round(2)
+        
     if "Discounted Amounted_Discount Amount" in invoices.columns:
         invoices["Discounted Amounted_Discount Amount"] = pd.to_numeric(
             invoices["Discounted Amounted_Discount Amount"].replace('[\\$,]', '', regex=True),
-            errors="coerce"
-        ).round(2)
+            errors="coerce").round(2)
+        
     if "Invoice Date" in invoices.columns:
         invoices["Invoice Date"] = format_date(invoices["Invoice Date"])
 
@@ -176,16 +171,13 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
             "Invoice Number": pick_notna,
             "Invoice Date": pick_notna,
             "Merchandise Total": pick_notna,
-            "Discounted Amounted_Discount Amount": pick_notna
-        }).reset_index()
-    )
+            "Discounted Amounted_Discount Amount": pick_notna}).reset_index())
 
     invoice_grouped = invoice_grouped.rename(columns={
         "Invoice Number": "Invoice#",
         "Invoice Date": "Invoice Date",
         "Merchandise Total": "Merch. Total",
-        "Discounted Amounted_Discount Amount": "Invoice Disc."
-    })
+        "Discounted Amounted_Discount Amount": "Invoice Disc."})
 
     orders = orders.merge(invoice_grouped, on="PO Number", how="left", validate="many_to_one")
 
@@ -193,7 +185,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Invoice Disc."] = pd.to_numeric(orders["Invoice Disc."], errors="coerce").fillna(0)
     orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."]).round(2)
 
-    # Blank out 0s for aesthetic purposes
+    #turn 0s to blanks
     orders.loc[orders["Merch. Total"] == 0, "Merch. Total"] = ""
     orders.loc[orders["Invoice Disc."] == 0, "Invoice Disc."] = ""
     orders.loc[orders["Net Invoiced"] == 0, "Net Invoiced"] = ""
@@ -246,5 +238,4 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "Download Merged Excel File",
         data=output.getvalue(),
         file_name=filename,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
