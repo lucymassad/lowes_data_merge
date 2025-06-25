@@ -40,6 +40,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     progress.progress(20, text="Cleaning orders and metadata...")
 
+    # == Mappings ==
     vbu_mapping = {118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville",
                    502232: "Milazzo", 505071: "Claymont", 505496: "Gaylord", 505085: "Spring Valley Ice Melt",
                    114037: "PCI Nitrogen", 501677: "Theremorock East Inc"}
@@ -68,6 +69,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "120019": "Sunniland", "1240180": "Sunniland", "91299": "Sunniland", "335457": "Sunniland",
         "147992": "Sunniland", "148054": "Sunniland"}
 
+    # === Orders Cleanup ===
     orders["PO Line#"] = pd.to_numeric(orders["PO Line#"], errors="coerce")
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
     headers = orders[(orders["PO Line#"].isna()) & (orders["Qty Ordered"].isna())].copy()
@@ -80,6 +82,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         orders[col] = orders[col].combine_first(orders[f"{col}_hdr"])
         orders.drop(columns=[f"{col}_hdr"], inplace=True)
 
+    # === Derived Fields ===
     orders["Item#"] = orders["Buyers Catalog or Stock Keeping #"]
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
     orders["Item Name"] = orders["Item"]
@@ -93,7 +96,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders["Requested Delivery Date"] = format_date(orders["Requested Delivery Date"])
     orders["PO Date"] = format_date(orders["PO Date"])
-
     orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
     orders["PO Num Sort"] = pd.to_numeric(orders["PO Number"], errors="coerce")
     orders = orders.sort_values(by=["PO Date Sortable", "PO Num Sort"], ascending=[False, False])
@@ -105,16 +107,16 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     shipments = shipments[[col for col in shipment_cols if col in shipments.columns]].copy()
     if "ASN Date" in shipments: shipments["ASN Date"] = format_date(shipments["ASN Date"])
     if "Ship Date" in shipments: shipments["Ship Date"] = format_date(shipments["Ship Date"])
-
     orders = orders.merge(shipments, how="left", on=["PO Number", "Item#"])
     orders.rename(columns={"BOL": "BOL#"}, inplace=True)
 
     progress.progress(60, text="Merging Invoices...")
 
     invoices = invoices.rename(columns={"Retailers PO #": "PO Number", "Buyer's Catalog or Stock Keeping #": "Item#"})
-    invoice_merge_cols = ["PO Number", "Item#", "Vendor Item#", "Invoice Number", "Invoice Date", "Invoice Total", "Discounted Amounted_Discount Amount"]
-    invoice_merge_cols = [col for col in invoice_merge_cols if col in invoices.columns]
-    invoices = invoices[invoice_merge_cols]
+    potential_keys = ["PO Number", "Item#", "Vendor Item#"]
+    merge_keys = [key for key in potential_keys if key in invoices.columns and key in orders.columns]
+    invoice_cols = merge_keys + [col for col in ["Invoice Number", "Invoice Date", "Invoice Total", "Discounted Amounted_Discount Amount"] if col in invoices.columns]
+    invoices = invoices[invoice_cols].copy()
 
     if "Invoice Total" in invoices.columns:
         invoices["Invoice Total"] = pd.to_numeric(invoices["Invoice Total"].replace('[\\$,]', '', regex=True), errors="coerce")
@@ -125,7 +127,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     if "Invoice Date" in invoices.columns:
         invoices["Invoice Date"] = format_date(invoices["Invoice Date"])
 
-    merge_keys = [col for col in ["PO Number", "Item#", "Vendor Item#"] if col in invoices.columns and col in orders.columns]
     orders = orders.merge(invoices, on=merge_keys, how="left")
     orders.rename(columns={"Discounted Amounted_Discount Amount": "Invoice Disc.", "Invoice Number": "Invoice#"}, inplace=True)
 
@@ -141,13 +142,10 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
     orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str)
 
-    final_cols = [
-        "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
-        "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name",
-        "Ship To State", "Requested Delivery Date", "Fulfillment Status", "Late Ship",
-        "ASN Date", "Ship Date", "BOL#", "SCAC", "Invoice#", "Invoice Date", "Invoice Disc.", "Invoice Total",
-        "Month Filter", "Year Filter", "Quarter Filter"
-    ]
+    final_cols = ["PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
+        "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To State",
+        "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "BOL#", "SCAC",
+        "Invoice#", "Invoice Date", "Invoice Disc.", "Invoice Total", "Month Filter", "Year Filter", "Quarter Filter"]
 
     for col in final_cols:
         if col not in orders.columns:
