@@ -147,7 +147,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders.rename(columns={
         "BOL": "BOL#",
         "ASN #": "ASN#"
-    }, inplace=True)
+        "Merchandise Total": "Merch. Total"}, inplace=True)
+    
+    orders["Net Invoiced"] = (
+    pd.to_numeric(orders["Merch. Total"], errors="coerce") -
+    pd.to_numeric(orders["Invoice Disc."], errors="coerce").fillna(0)).round(2)
 
     progress.progress(60, text="Merging Invoices...")
 
