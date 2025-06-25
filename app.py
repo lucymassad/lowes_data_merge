@@ -84,11 +84,24 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     "Buyer Item #": "Buyers Catalog or Stock Keeping #",
     "Location #": "Ship To Location"
   })
+
   for col in ["ASN Date","Ship Date"]:
-    shipments[col]=format_date(shipments[col])
-  shipments=shipments[["PO Number","Buyers Catalog or Stock Keeping #","Ship To Location","ASN Date","Ship Date","BOL","SCAC"]]
+    shipments[col]=pd.to_datetime(shipments[col],errors="coerce")
+
+  shipment_collapsed=(shipments.groupby([
+    "PO Number","Buyers Catalog or Stock Keeping #","Ship To Location"],as_index=False)
+    .agg({
+      "ASN Date":"max",
+      "Ship Date":"max",
+      "BOL":lambda x: "/".join(sorted(set(x.dropna()))),
+      "SCAC":lambda x: "/".join(sorted(set(x.dropna())))
+    }))
+
+  shipment_collapsed["ASN Date"]=format_date(shipment_collapsed["ASN Date"])
+  shipment_collapsed["Ship Date"]=format_date(shipment_collapsed["Ship Date"])
+
   orders=orders.merge(
-    shipments,
+    shipment_collapsed,
     on=["PO Number","Buyers Catalog or Stock Keeping #","Ship To Location"],
     how="left"
   )
