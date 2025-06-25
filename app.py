@@ -231,7 +231,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     file_size_kb = len(output.getvalue()) / 1024
     progress.progress(100, text="Complete")
-    st.success(f"✅ Your file is saved as **{filename}**")
+    st.success(f"Your file is saved as **{filename}**")
     st.caption(f"Approx. file size: {file_size_kb:.1f} KB")
     st.info(f"Total merged rows: {len(orders):,}")
     st.download_button(
