@@ -59,11 +59,15 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
 
-    headers = orders[orders["PO Line#"].isna() & orders["Qty Ordered"].isna()].copy()
-    details = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
+    # Sort to ensure headers come before details for each PO
+    orders = orders.sort_values(["PO# Num", "PO Line#"], na_position="first")
 
+    # Forward-fill metadata across all rows grouped by PO Number
     cols_to_ffill = ["PO Number", "PO Date", "Vendor #", "Ship To Location", "Requested Delivery Date"]
-    details = details.sort_values(["PO# Num", "Vendor #", "PO Line#"], ascending=[True, True, True])
+    orders[cols_to_ffill] = orders.groupby("PO Number", group_keys=False)[cols_to_ffill].ffill().infer_objects()
+
+    # Drop header rows (keep detail lines only)
+    details = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
     details[cols_to_ffill] = details[cols_to_ffill].ffill().infer_objects(copy=False)
 
     orders = details.copy()
