@@ -145,9 +145,9 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders = orders.merge(shipments, how="left", on=["PO Number", "Item#"])
     orders.rename(columns={
-        "BOL": "BOL#",
-        "ASN #": "ASN#"
-        "Merchandise Total": "Merch. Total"}, inplace=True)
+    "Discounted Amounted_Discount Amount": "Invoice Disc.",
+    "Invoice Number": "Invoice#",
+    "Merchandise Total": "Merch. Total"}, inplace=True)
     
     orders["Net Invoiced"] = (
     pd.to_numeric(orders["Merch. Total"], errors="coerce") -
