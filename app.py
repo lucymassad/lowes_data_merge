@@ -180,9 +180,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders.rename(columns={
         "Discounted Amounted_Discount Amount": "Invoice Disc.",
         "Invoice Number": "Invoice#",
-        "Merchandise Total": "Invoice Total"
+        "Merchandise Total": "Merch. Total"
     }, inplace=True)
 
+    orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."].fillna(0)).round(2)
+    
     progress.progress(80, text="Finalizing output...")
 
     orders["Fulfillment Status"] = "Not Invoiced"
@@ -199,7 +201,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
         "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To State",
         "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "ASN#",
-        "BOL#", "SCAC", "Invoice#", "Invoice Date", "Invoice Disc.", "Invoice Total",
+        "BOL#", "SCAC", "Invoice#", "Invoice Date", "Merch. Total", "Invoice Disc.", "Net Invoiced",
         "Month Filter", "Year Filter", "Quarter Filter"]
 
     for col in final_cols:
