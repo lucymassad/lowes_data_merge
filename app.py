@@ -127,12 +127,19 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     progress.progress(40, text="Merging Shipments...")
 
     shipments = shipments.rename(columns={"PO #": "PO Number", "Buyer Item #": "Item#"})
-    shipment_cols = ["PO Number", "Item#", "Location #", "ASN Date", "Ship Date", "BOL", "SCAC"]
+    shipment_cols = ["PO Number", "Item#", "Location #", "ASN Date", "Ship Date", "BOL", "SCAC", "ASN #"]
     shipments = shipments[[col for col in shipment_cols if col in shipments.columns]].copy()
-    if "ASN Date" in shipments: shipments["ASN Date"] = format_date(shipments["ASN Date"])
-    if "Ship Date" in shipments: shipments["Ship Date"] = format_date(shipments["Ship Date"])
+
+    if "ASN Date" in shipments:
+        shipments["ASN Date"] = format_date(shipments["ASN Date"])
+    if "Ship Date" in shipments:
+        shipments["Ship Date"] = format_date(shipments["Ship Date"])
+
     orders = orders.merge(shipments, how="left", on=["PO Number", "Item#"])
-    orders.rename(columns={"BOL": "BOL#"}, inplace=True)
+    orders.rename(columns={
+        "BOL": "BOL#",
+        "ASN #": "ASN#"
+    }, inplace=True)
 
     progress.progress(60, text="Merging Invoices...")
 
@@ -167,10 +174,12 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
     orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str)
 
-    final_cols = ["PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
+    final_cols = [
+        "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
         "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To State",
-        "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "BOL#", "SCAC",
-        "Invoice#", "Invoice Date", "Invoice Disc.", "Invoice Total", "Month Filter", "Year Filter", "Quarter Filter"]
+        "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "ASN#",
+        "BOL#", "SCAC", "Invoice#", "Invoice Date", "Invoice Disc.", "Invoice Total",
+        "Month Filter", "Year Filter", "Quarter Filter"]
 
     for col in final_cols:
         if col not in orders.columns:
