@@ -88,6 +88,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     # Forward-fill only needed metadata columns into details
     cols_to_ffill = ["PO Number", "PO Date", "Vendor #", "Ship To Location", "Requested Delivery Date"]
+    details = details.sort_values(["PO# Num", "Vendor #", "PO Line#"], ascending=[True, True, True])
     details[cols_to_ffill] = details[cols_to_ffill].ffill().infer_objects(copy=False)
 
     # Replace orders with cleaned-up detail rows
