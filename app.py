@@ -47,6 +47,12 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     "1240180":"Sunniland","91299":"Sunniland","335457":"Sunniland","147992":"Sunniland",
     "148054":"Sunniland"}
 
+  palette_map={
+    "4983612":50,"4983613":50,"5113267":50,"335456":32,"552696":32,"5516714":210,"5516716":210,
+    "5516715":210,"71894":12,"72931":60,"92951":12,"97086":12,"97809":12,"167411":4,
+    "552704":35,"91900":12,"961539":50,"552697":32,"71918":12,"94833":60,"552706":32,
+    "72801":60,"101760":50}
+
   def format_currency(x):return""if pd.isna(x)else f"${x:,.2f}"
   def format_date(series):return pd.to_datetime(series,errors="coerce").dt.strftime("%-m/%-d/%Y")
 
@@ -57,19 +63,25 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     st.error(f"Your {missing} is either missing or in the incorrect format.")
     st.stop()
 
-  orders=orders.sort_values("PO Date",ascending=False)
   orders=orders.sort_values(["PO Number","PO Line#"]).ffill().infer_objects(copy=False)
   orders=orders[orders["PO Line#"].notna()|orders["Qty Ordered"].notna()].copy()
   orders["Qty Ordered"]=pd.to_numeric(orders["Qty Ordered"],errors="coerce")
   orders["Unit Price"]=orders["Unit Price"].replace('[\$,]','',regex=True).astype(float)
   orders["VBU Name"]=pd.to_numeric(orders["Vendor #"],errors="coerce").map(vbu_mapping)
-  orders["Vendor Item#"]=orders["Buyers Catalog or Stock Keeping #"].map(vendor_item_map)
-  orders["Item Type"]=orders["Buyers Catalog or Stock Keeping #"].map(item_type_map)
   orders["Unit Price"]=orders["Unit Price"].apply(format_currency)
+
+  orders["PO Date (Raw)"]=pd.to_datetime(orders["PO Date"],errors="coerce")
+  orders=orders.sort_values("PO Date (Raw)",ascending=False)
+  orders.drop(columns="PO Date (Raw)",inplace=True)
+
   for col in ["PO Date","Requested Delivery Date","Ship Dates"]:
     orders[col]=format_date(orders[col])
 
-  orders["Ship To Code"] = orders["Ship To Location"]
+  orders["Vendor Item#"]=orders["Buyers Catalog or Stock Keeping #"].map(vendor_item_map)
+  orders["Item Type"]=orders["Buyers Catalog or Stock Keeping #"].map(item_type_map)
+  orders["Palettes"]=orders["Buyers Catalog or Stock Keeping #"].map(palette_map)
+  orders["Palettes"]=orders["Palettes"].where(pd.notna(orders["Palettes"]),"").apply(lambda x: f"{x:.1f}" if isinstance(x,(int,float)) else x)
+  orders["Ship To Code"]=orders["Ship To Location"]
 
   progress.progress(40,text="Merging Shipments...")
   shipments=shipments.rename(columns={"PO #":"PO Number","Buyer Item #":"Buyers Catalog or Stock Keeping #"})
@@ -109,15 +121,14 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     "Discounted Amounted_Discount Amount":"Invoice Disc.",
     "BOL":"BOL#"})
 
-  orders["Month Filter"] = pd.to_datetime(orders["PO Date"],errors="coerce").dt.month
-  orders["Year Filter"] = pd.to_datetime(orders["PO Date"],errors="coerce").dt.year
-  orders["Quarter Filter"] = pd.to_datetime(orders["PO Date"],errors="coerce").dt.quarter.map(lambda x: f"Q{x}" if pd.notna(x) else "")
+  orders["Month Filter"]=pd.to_datetime(orders["PO Date"],errors="coerce").dt.month
+  orders["Year Filter"]=pd.to_datetime(orders["PO Date"],errors="coerce").dt.year
+  orders["Quarter Filter"]=pd.to_datetime(orders["PO Date"],errors="coerce").dt.quarter.map(lambda q:f"Q{q}")
 
-  final_cols=["PO#","PO Date","VBU#","VBU Name","Item#","Vendor Item#","Item Name","Item Type","Qty Ordered",
-              "PO Line#","Ship To Code","Ship to Name","Ship To State","Requested Delivery Date",
-              "Fulfillment Status","Late Ship","ASN Date","Ship Date","BOL#","SCAC",
-              "Invoice#","Invoice Date","Invoice Disc.","Invoice Total",
-              "Month Filter","Year Filter","Quarter Filter"]
+  final_cols=["PO#","PO Date","VBU#","VBU Name","Item#","Vendor Item#","Item Name","Item Type",
+              "Qty Ordered","Palettes","Unit Price","PO Line#","Ship To Code","Ship to Name","Ship To State",
+              "Requested Delivery Date","Fulfillment Status","Late Ship","ASN Date","Ship Date","BOL#","SCAC",
+              "Invoice#","Invoice Date","Invoice Disc.","Invoice Total","Month Filter","Year Filter","Quarter Filter"]
   orders=orders.reindex(columns=final_cols).fillna("")
 
   tz=pytz.timezone("America/New_York")
@@ -135,6 +146,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
       worksheet.write(0,idx,col,header_format)
 
   file_size_kb=len(output.getvalue())/1024
+  progress.progress(100,text="✅ Complete")
   st.success("File processed")
   st.caption(f"Approx. file size: {file_size_kb:.1f} KB")
   st.info(f"Total merged rows: {len(orders):,}")
