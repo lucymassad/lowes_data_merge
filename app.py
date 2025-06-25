@@ -162,55 +162,69 @@ orders = orders.merge(
 )
 orders.drop(columns="PO_clean", inplace=True)
 
-  progress.progress(80,text="Finalizing output...")
-  orders["Fulfillment Status"]="Not Invoiced"
-  orders.loc[pd.notna(orders["Invoice Number"]),"Fulfillment Status"]="Invoiced"
-  orders.loc[(pd.notna(orders["Ship Date"])&(orders["Fulfillment Status"]=="Not Invoiced")),"Fulfillment Status"]="Shipped Not Invoiced"
-  orders["Late Ship"]=pd.to_datetime(orders["Ship Date"],errors="coerce")>pd.to_datetime(orders["Requested Delivery Date"],errors="coerce")
-  orders["Late Ship"]=orders["Late Ship"].map({True:"Yes",False:"No"}).fillna("")
-  orders["Ship to Name"]=orders["Ship To Name"]
+progress.progress(80, text="Finalizing output...")
 
-  orders["PO Date Sortable"]=pd.to_datetime(orders["PO Date"],errors="coerce")
-  orders=orders.sort_values(by=["PO Date Sortable","PO# Num"],ascending=[False,False])
-  orders.drop(columns=["PO Date Sortable","PO# Num"],inplace=True)
+orders["Fulfillment Status"] = "Not Invoiced"
+orders.loc[pd.notna(orders["Invoice Number"]), "Fulfillment Status"] = "Invoiced"
+orders.loc[
+    (pd.notna(orders["Ship Date"]) & (orders["Fulfillment Status"] == "Not Invoiced")),
+    "Fulfillment Status"
+] = "Shipped Not Invoiced"
 
-  orders["Month Filter"]=pd.to_datetime(orders["PO Date"],errors="coerce").dt.month
-  orders["Year Filter"]=pd.to_datetime(orders["PO Date"],errors="coerce").dt.year
-  orders["Quarter Filter"]="Q"+pd.to_datetime(orders["PO Date"],errors="coerce").dt.quarter.astype(str)
+orders["Late Ship"] = pd.to_datetime(orders["Ship Date"], errors="coerce") > pd.to_datetime(orders["Requested Delivery Date"], errors="coerce")
+orders["Late Ship"] = orders["Late Ship"].map({True: "Yes", False: "No"}).fillna("")
+orders["Ship to Name"] = orders["Ship To Name"]
 
-  orders=orders.rename(columns={
-    "PO Number":"PO#","Vendor #":"VBU#",
-    "Buyers Catalog or Stock Keeping #":"Item#",
-    "Item":"Item Name",
-    "Invoice Number":"Invoice#",
-    "Discounted Amounted_Discount Amount":"Invoice Disc.",
-    "BOL":"BOL#"})
+orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
+orders = orders.sort_values(by=["PO Date Sortable", "PO# Num"], ascending=[False, False])
+orders.drop(columns=["PO Date Sortable", "PO# Num"], inplace=True)
 
-  final_cols=["PO#","PO Date","VBU#","VBU Name","Item#","Vendor Item#","Item Name","Item Type",
-              "Qty Ordered","Palettes","Unit Price","PO Line#","Ship To Code","Ship to Name",
-              "Ship To State","Requested Delivery Date","Fulfillment Status","Late Ship",
-              "ASN Date","Ship Date","BOL#","SCAC","Invoice#","Invoice Date",
-              "Invoice Disc.","Invoice Total","Month Filter","Year Filter","Quarter Filter"]
+orders["Month Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.month
+orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
+orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str)
 
-  orders=orders.reindex(columns=final_cols).fillna("")
+orders = orders.rename(columns={
+    "PO Number": "PO#",
+    "Vendor #": "VBU#",
+    "Buyers Catalog or Stock Keeping #": "Item#",
+    "Item": "Item Name",
+    "Invoice Number": "Invoice#",
+    "Discounted Amounted_Discount Amount": "Invoice Disc.",
+    "BOL": "BOL#"
+})
 
-  tz=pytz.timezone("America/New_York")
-  timestamp=datetime.now(tz).strftime("%Y-%m-%d_%H%M")
-  filename=f"Lowes_Merged_{timestamp}.xlsx"
+final_cols = [
+    "PO#", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
+    "Qty Ordered", "Palettes", "Unit Price", "PO Line#", "Ship To Code", "Ship to Name",
+    "Ship To State", "Requested Delivery Date", "Fulfillment Status", "Late Ship",
+    "ASN Date", "Ship Date", "BOL#", "SCAC", "Invoice#", "Invoice Date",
+    "Invoice Disc.", "Invoice Total", "Month Filter", "Year Filter", "Quarter Filter"
+]
 
-  output=BytesIO()
-  with pd.ExcelWriter(output,engine="xlsxwriter") as writer:
-    orders.to_excel(writer,index=False,sheet_name="Orders")
-    workbook=writer.book
-    worksheet=writer.sheets["Orders"]
-    for idx,col in enumerate(orders.columns):
-      worksheet.set_column(idx,idx,20)
-      header_format=workbook.add_format({"align":"left","bold":True})
-      worksheet.write(0,idx,col,header_format)
+orders = orders.reindex(columns=final_cols).fillna("")
 
-  file_size_kb=len(output.getvalue())/1024
-  progress.progress(100,text="✅ Complete!")
-  st.success("File processed")
-  st.caption(f"Approx. file size: {file_size_kb:.1f} KB")
-  st.info(f"Total merged rows: {len(orders):,}")
-  st.download_button("Download Merged Excel File",data=output.getvalue(),file_name=filename,mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+tz = pytz.timezone("America/New_York")
+timestamp = datetime.now(tz).strftime("%Y-%m-%d_%H%M")
+filename = f"Lowes_Merged_{timestamp}.xlsx"
+
+output = BytesIO()
+with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+    orders.to_excel(writer, index=False, sheet_name="Orders")
+    workbook = writer.book
+    worksheet = writer.sheets["Orders"]
+    for idx, col in enumerate(orders.columns):
+        worksheet.set_column(idx, idx, 20)
+        header_format = workbook.add_format({"align": "left", "bold": True})
+        worksheet.write(0, idx, col, header_format)
+
+file_size_kb = len(output.getvalue()) / 1024
+progress.progress(100, text="✅ Complete!")
+st.success("File processed")
+st.caption(f"Approx. file size: {file_size_kb:.1f} KB")
+st.info(f"Total merged rows: {len(orders):,}")
+st.download_button(
+    "Download Merged Excel File",
+    data=output.getvalue(),
+    file_name=filename,
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
