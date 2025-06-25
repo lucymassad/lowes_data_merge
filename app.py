@@ -32,12 +32,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     progress = st.progress(0, text="Reading files...")
 
     orders = pd.read_excel(uploaded_orders, dtype=str)
-    orders.columns = orders.columns.astype(str).str.strip()
-
     shipments = pd.read_excel(uploaded_shipments, dtype=str)
-    shipments.columns = shipments.columns.astype(str).str.strip()
-
     invoices = pd.read_excel(uploaded_invoices, dtype=str)
+
+    orders.columns = orders.columns.astype(str).str.strip()
+    shipments.columns = shipments.columns.astype(str).str.strip()
     invoices.columns = invoices.columns.astype(str).str.strip()
 
     progress.progress(20, text="Cleaning Orders data...")
@@ -48,35 +47,9 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         501677: "Theremorock East Inc"
     }
 
-    palette_mapping = {
-        "4983612": 50, "4983613": 50, "5113267": 50, "335456": 32, "552696": 32, "5516714": 210,
-        "5516716": 210, "5516715": 210, "71894": 12, "72931": 60, "92951": 12, "97086": 12,
-        "97809": 12, "167411": 4, "552704": 35, "91900": 12, "961539": 50, "552697": 32,
-        "71918": 12, "94833": 60, "552706": 32, "72801": 60, "101760": 50
-    }
-
-    vendor_item_mapping = {
-        "4983612": "B8110200", "4983613": "B8110300", "5113267": "B8110100", "335456": "B1195080",
-        "552696": "B1195020", "5516714": "B8100731", "5516716": "B8100732", "5516715": "B8100733",
-        "71894": "B1246160", "72931": "B1224080", "92951": "B1224060", "97086": "B1260060",
-        "97809": "B1201460", "167411": "B1237440", "552704": "B1195010", "91900": "B1202360",
-        "961539": "B1258800", "552697": "B1195040", "71918": "B1246150", "94833": "B1260080",
-        "552706": "B1195050", "72801": "B1202380", "101760": "B2063400", "120019": "B1200190",
-        "1240180": "B1242620", "91299": "B1202390", "4350231": "B4973300", "876249": "B4905700",
-        "758650": "B4905600", "243942": "B4904900", "335457": "B2241150", "147992": "B1288200",
-        "148054": "B1298200"
-    }
-
-    item_type_mapping = {
-        "4983612": "Commodity", "4983613": "Commodity", "5113267": "Commodity", "335456": "Sunniland",
-        "552696": "Sunniland", "5516714": "Soil", "5516716": "Soil", "5516715": "Soil",
-        "71894": "Sunniland", "72931": "Sunniland", "92951": "Sunniland", "97086": "Sunniland",
-        "97809": "Sunniland", "167411": "Sunniland", "552704": "Sunniland", "91900": "Sunniland",
-        "961539": "Sunniland", "552697": "Sunniland", "71918": "Sunniland", "94833": "Sunniland",
-        "552706": "Sunniland", "72801": "Sunniland", "101760": "Ice Melt", "1053900": "Ice Melt",
-        "120019": "Sunniland", "1240180": "Sunniland", "91299": "Sunniland", "335457": "Sunniland",
-        "147992": "Sunniland", "148054": "Sunniland"
-    }
+    palette_mapping = {}
+    vendor_item_mapping = {}
+    item_type_mapping = {}
 
     required_cols = ["PO Number", "PO Line#"]
     missing = [col for col in required_cols if col not in orders.columns]
@@ -97,12 +70,16 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders = orders.drop_duplicates(subset=["PO Number", "PO Line#", "Buyers Catalog or Stock Keeping #", "Vendor #"])
 
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
-    orders["Unit Price"] = orders["Unit Price"].replace('[\$,]', '', regex=True).astype(float)
-    orders["VBU Name"] = pd.to_numeric(orders["Vendor #"], errors="coerce").map(vbu_mapping)
+    orders["Unit Price"] = orders["Unit Price"].replace('[\\$,]', '', regex=True).astype(float)
+
+    orders["Vendor # Clean"] = orders["Vendor #"].str.extract(r"(\\d+)")[0].astype(float)
+    orders["VBU Name"] = orders["Vendor # Clean"].map(vbu_mapping)
+    orders["VBU#"] = orders["Vendor #"]
     orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
 
     for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
-        orders[col] = format_date(orders[col])
+        if col in orders.columns:
+            orders[col] = format_date(orders[col])
 
     orders["Palettes"] = orders["Buyers Catalog or Stock Keeping #"].map(palette_mapping)
     orders["Vendor Item#"] = orders["Buyers Catalog or Stock Keeping #"].map(vendor_item_mapping)
@@ -149,17 +126,17 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     })
 
     invoice_collapsed["Invoice Total"] = pd.to_numeric(
-        invoice_collapsed["Invoice Total"].replace('[\$,]', '', regex=True), errors="coerce"
+        invoice_collapsed["Invoice Total"].replace('[\\$,]', '', regex=True), errors="coerce"
     ).apply(format_currency)
 
     invoice_collapsed["Discounted Amounted_Discount Amount"] = pd.to_numeric(
-        invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\$,]', '', regex=True), errors="coerce"
+        invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\\$,]', '', regex=True), errors="coerce"
     ).apply(format_currency)
 
     invoice_collapsed["Invoice Date"] = format_date(invoice_collapsed["Invoice Date"])
 
-    orders["PO_clean"] = orders["PO Number"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
-    invoice_collapsed["PO_clean"] = invoice_collapsed["Retailers PO #"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+    orders["PO_clean"] = orders["PO Number"].astype(str).str.strip().str.replace(r"\\.0$", "", regex=True)
+    invoice_collapsed["PO_clean"] = invoice_collapsed["Retailers PO #"].astype(str).str.strip().str.replace(r"\\.0$", "", regex=True)
 
     orders = orders.merge(
         invoice_collapsed[[
@@ -185,11 +162,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders["Late Ship"] = pd.to_datetime(orders["Ship Date"], errors="coerce") > pd.to_datetime(orders["Requested Delivery Date"], errors="coerce")
     orders["Late Ship"] = orders["Late Ship"].map({True: "Yes", False: "No"}).fillna("")
-    orders["Ship to Name"] = orders.get("Ship To Name", "")
+    orders["Ship to Name"] = orders["Ship To Name"] if "Ship To Name" in orders.columns else ""
 
     orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
     orders = orders.sort_values(by=["PO Date Sortable", "PO# Num"], ascending=[False, False])
-    orders.drop(columns=["PO Date Sortable", "PO# Num"], inplace=True)
+    orders.drop(columns=["PO Date Sortable", "PO# Num", "Vendor # Clean"], inplace=True)
 
     orders["Month Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.month
     orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
@@ -197,7 +174,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders = orders.rename(columns={
         "PO Number": "PO#",
-        "Vendor #": "VBU#",
         "Buyers Catalog or Stock Keeping #": "Item#",
         "Item": "Item Name",
         "Invoice Number": "Invoice#",
@@ -206,7 +182,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     final_cols = [
         "PO#", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
-        "Qty Ordered", "Palettes", "Unit Price", "PO Line#", "Ship To Code", "Ship to Name",
+        "Qty Ordered", "Palettes", "Unit Price", "PO Line#", "Ship To Location", "Ship to Name",
         "Ship To State", "Requested Delivery Date", "Fulfillment Status", "Late Ship",
         "ASN Date", "Ship Date", "BOL#", "SCAC", "Invoice#", "Invoice Date",
         "Invoice Disc.", "Invoice Total", "Month Filter", "Year Filter", "Quarter Filter"
