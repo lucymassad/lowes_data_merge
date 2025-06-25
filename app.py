@@ -134,6 +134,8 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
     orders["PO Num Sort"] = pd.to_numeric(orders["PO Number"], errors="coerce")
 
+    orders = orders.sort_values(by=["PO Date Sortable", "PO Num Sort"], ascending=[False, False])
+
     progress.progress(40, text="Merging Shipments...")
 
     shipments = shipments.rename(columns={"PO #": "PO Number", "Buyer Item #": "Item#"})
