@@ -32,8 +32,13 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     progress = st.progress(0, text="Reading files...")
 
     orders = pd.read_excel(uploaded_orders, dtype=str)
+    orders.columns = orders.columns.astype(str).str.strip()
+
     shipments = pd.read_excel(uploaded_shipments, dtype=str)
+    shipments.columns = shipments.columns.astype(str).str.strip()
+
     invoices = pd.read_excel(uploaded_invoices, dtype=str)
+    invoices.columns = invoices.columns.astype(str).str.strip()
 
     progress.progress(20, text="Cleaning Orders data...")
 
@@ -73,7 +78,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "147992": "Sunniland", "148054": "Sunniland"
     }
 
-    orders.columns = orders.columns.astype(str).str.strip()
     required_cols = ["PO Number", "PO Line#"]
     missing = [col for col in required_cols if col not in orders.columns]
     if missing:
@@ -82,19 +86,14 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
 
-    # Separate headers and details
     headers = orders[orders["PO Line#"].isna() & orders["Qty Ordered"].isna()].copy()
     details = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
 
-    # Forward-fill only needed metadata columns into details
     cols_to_ffill = ["PO Number", "PO Date", "Vendor #", "Ship To Location", "Requested Delivery Date"]
     details = details.sort_values(["PO# Num", "Vendor #", "PO Line#"], ascending=[True, True, True])
     details[cols_to_ffill] = details[cols_to_ffill].ffill().infer_objects(copy=False)
 
-    # Replace orders with cleaned-up detail rows
     orders = details.copy()
-
-    # Optional safety: avoid accidental vendor duplication
     orders = orders.drop_duplicates(subset=["PO Number", "PO Line#", "Buyers Catalog or Stock Keeping #", "Vendor #"])
 
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
@@ -121,12 +120,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     for col in ["ASN Date", "Ship Date"]:
         shipments[col] = pd.to_datetime(shipments[col], errors="coerce")
 
-    # Collapse to one row per PO+Item+Location (combine partials)
     shipment_collapsed = (
         shipments.groupby(["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"], as_index=False)
         .agg({
-            "ASN Date": "max",  # latest ASN
-            "Ship Date": "max",  # latest Ship Date
+            "ASN Date": "max",
+            "Ship Date": "max",
             "BOL": lambda x: "/".join(sorted(set(x.dropna().astype(str)))),
             "SCAC": lambda x: "/".join(sorted(set(x.dropna().astype(str))))
         })
@@ -143,7 +141,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     progress.progress(60, text="Merging Invoices...")
 
-    invoices.columns = invoices.columns.astype(str).str.strip()
     invoice_collapsed = invoices.groupby("Invoice Number", as_index=False).agg({
         "Retailers PO #": "first",
         "Invoice Date": "first",
