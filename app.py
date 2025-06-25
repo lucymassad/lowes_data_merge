@@ -62,6 +62,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     st.error(f"Your {missing} is either missing or in the incorrect format.")
     st.stop()
 
+  orders["PO# Num"]=pd.to_numeric(orders["PO Number"],errors="coerce")
   orders=orders.sort_values(["PO Number","PO Line#"]).ffill().infer_objects(copy=False)
   orders=orders[orders["PO Line#"].notna()|orders["Qty Ordered"].notna()].copy()
   orders["Qty Ordered"]=pd.to_numeric(orders["Qty Ordered"],errors="coerce")
@@ -108,7 +109,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
   orders["Ship to Name"]=orders["Ship To Name"]
 
   orders["PO Date Sortable"]=pd.to_datetime(orders["PO Date"],errors="coerce")
-  orders["PO# Num"]=pd.to_numeric(orders["PO#"],errors="coerce")
   orders=orders.sort_values(by=["PO Date Sortable","PO# Num"],ascending=[False,False])
   orders.drop(columns=["PO Date Sortable","PO# Num"],inplace=True)
 
