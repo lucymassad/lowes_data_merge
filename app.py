@@ -89,7 +89,10 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders = orders.sort_values(["PO# Num", "PO Line#"], na_position="first")
 
     # Forward-fill metadata across all rows grouped by PO Number
-    cols_to_ffill = ["PO Number", "PO Date", "Vendor #", "Ship To Location", "Requested Delivery Date"]
+    cols_to_ffill = [
+        "PO Number", "PO Date", "Vendor #", "Ship To Location",
+        "Requested Delivery Date", "Ship To Name", "Ship To State"
+    ]
     orders[cols_to_ffill] = orders.groupby("PO Number", group_keys=False)[cols_to_ffill].ffill().infer_objects()
 
     # Drop header rows (keep detail lines only)
