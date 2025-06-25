@@ -194,7 +194,9 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders["Late Ship"] = pd.to_datetime(orders["Ship Date"], errors="coerce") > pd.to_datetime(orders["Requested Delivery Date"], errors="coerce")
     orders["Late Ship"] = orders["Late Ship"].map({True: "Yes", False: "No"}).fillna("")
-    orders["Ship to Name"] = orders["Ship To Name"] if "Ship To Name" in orders.columns else ""
+
+    orders["Ship to Name"] = orders.get("Ship To Name", "")
+    orders["Ship To State"] = orders.get("Ship To State", "")
 
     orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
     orders = orders.sort_values(by=["PO Date Sortable", "PO# Num"], ascending=[False, False])
