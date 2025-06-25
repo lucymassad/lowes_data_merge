@@ -9,23 +9,8 @@ st.title("Merge Lowes Data Files")
 st.markdown("Upload **Orders**, **Shipments**, and **Invoices** files to generate a merged Excel report. Files must be in the original SPS downloaded format.")
 
 #helpers
-def format_currency(x):
-    return "" if pd.isna(x) else f"${x:,.2f}"
-
 def format_date(series):
     return pd.to_datetime(series, errors="coerce").dt.strftime("%m/%d/%Y")
-
-def dedupe_columns(cols):
-    seen = {}
-    new_cols = []
-    for col in cols:
-        if col not in seen:
-            seen[col] = 0
-            new_cols.append(col)
-        else:
-            seen[col] += 1
-            new_cols.append(f"{col}.{seen[col]}")
-    return new_cols
 
 def pick_notna(series):
     return series.dropna().iloc[0] if not series.dropna().empty else ""
