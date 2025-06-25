@@ -27,7 +27,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     shipments = pd.read_excel(uploaded_shipments, dtype=str)
     invoices = pd.read_excel(uploaded_invoices, dtype=str)
 
-    orders.columns = orders.columns.str.strip()
     shipments.columns = shipments.columns.str.strip()
     invoices.columns = invoices.columns.str.strip()
 
