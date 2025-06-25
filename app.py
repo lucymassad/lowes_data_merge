@@ -20,6 +20,7 @@ uploaded_orders = st.file_uploader("Upload Orders File (.xlsx)", type="xlsx")
 uploaded_shipments = st.file_uploader("Upload Shipments File (.xlsx)", type="xlsx")
 uploaded_invoices = st.file_uploader("Upload Invoices File (.xlsx)", type="xlsx")
 
+#progress bar
 if uploaded_orders and uploaded_shipments and uploaded_invoices:
     progress = st.progress(0, text="Reading Files...")
 
@@ -30,34 +31,38 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     shipments.columns = shipments.columns.str.strip()
     invoices.columns = invoices.columns.str.strip()
 
-    # Fill blank Record Type with Invoice Purpose if missing
+    #fill missing record types with invoice purpose
     if "Record Type" in invoices.columns and "Invoice purpose" in invoices.columns:
         invoices["Record Type"] = invoices["Record Type"].fillna(invoices["Invoice purpose"])
 
     progress.progress(20, text="Cleaning Orders...")
 
-    #mappings
-    vbu_mapping = {118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville",
-                   502232: "Milazzo", 505071: "Claymont", 505496: "Gaylord", 505085: "Spring Valley Ice Melt",
-                   114037: "PCI Nitrogen", 501677: "Theremorock East Inc"}
+    #maps
+    vbu_mapping = {
+        118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville",
+        502232: "Milazzo", 505071: "Claymont", 505496: "Gaylord", 505085: "Spring Valley Ice Melt",
+        114037: "PCI Nitrogen", 501677: "Theremorock East Inc"}
 
-    palette_mapping = {"4983612": 50, "4983613": 50, "5113267": 50, "335456": 32, "552696": 32, "5516714": 210,
-                       "5516716": 210, "5516715": 210, "71894": 12, "72931": 60, "92951": 12, "97086": 12,
-                       "97809": 12, "167411": 4, "552704": 35, "91900": 12, "961539": 50, "552697": 32,
-                       "71918": 12, "94833": 60, "552706": 32, "72801": 60, "101760": 50}
+    palette_mapping = {
+        "4983612": 50, "4983613": 50, "5113267": 50, "335456": 32, "552696": 32,
+        "5516714": 210, "5516716": 210, "5516715": 210, "71894": 12, "72931": 60,
+        "92951": 12, "97086": 12, "97809": 12, "167411": 4, "552704": 35,
+        "91900": 12, "961539": 50, "552697": 32, "71918": 12, "94833": 60,
+        "552706": 32, "72801": 60, "101760": 50}
 
     vendor_item_mapping = {
-    "4983612": "B8110200", "4983613": "B8110300", "5113267": "B8110100", "335456": "B1195080",
-    "552696": "B1195020", "5516714": "B8100731", "5516716": "B8100732", "5516715": "B8100733",
-    "71894": "B1246160", "72931": "B1224080", "92951": "B1224060", "97086": "B1260060",
-    "97809": "B1201460", "167411": "B1237440", "552704": "B1195010", "91900": "B1202360",
-    "961539": "B1258800", "552697": "B1195040", "71918": "B1246150", "94833": "B1260080",
-    "552706": "B1195050", "72801": "B1202380", "101760": "B2063400", "120019": "B1200190",
-    "1240180": "B1242620", "91299": "B1202390", "4350231": "B4973300", "876249": "B4905700",
-    "758650": "B4905600", "243942": "B4904900", "335457": "B2241150", "147992": "B1288200",
-    "148054": "B1298200", "1330491": "B4292000"}
+        "4983612": "B8110200", "4983613": "B8110300", "5113267": "B8110100", "335456": "B1195080",
+        "552696": "B1195020", "5516714": "B8100731", "5516716": "B8100732", "5516715": "B8100733",
+        "71894": "B1246160", "72931": "B1224080", "92951": "B1224060", "97086": "B1260060",
+        "97809": "B1201460", "167411": "B1237440", "552704": "B1195010", "91900": "B1202360",
+        "961539": "B1258800", "552697": "B1195040", "71918": "B1246150", "94833": "B1260080",
+        "552706": "B1195050", "72801": "B1202380", "101760": "B2063400", "120019": "B1200190",
+        "1240180": "B1242620", "91299": "B1202390", "4350231": "B4973300", "876249": "B4905700",
+        "758650": "B4905600", "243942": "B4904900", "335457": "B2241150", "147992": "B1288200",
+        "148054": "B1298200", "1330491": "B4292000"}
 
-    item_type_mapping = {"4983612": "Commodity", "4983613": "Commodity", "5113267": "Commodity", "335456": "Sunniland",
+    item_type_mapping = {
+        "4983612": "Commodity", "4983613": "Commodity", "5113267": "Commodity", "335456": "Sunniland",
         "552696": "Sunniland", "5516714": "Soil", "5516716": "Soil", "5516715": "Soil",
         "71894": "Sunniland", "72931": "Sunniland", "92951": "Sunniland", "97086": "Sunniland",
         "97809": "Sunniland", "167411": "Sunniland", "552704": "Sunniland", "91900": "Sunniland",
@@ -66,10 +71,9 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "120019": "Sunniland", "1240180": "Sunniland", "91299": "Sunniland", "335457": "Sunniland",
         "147992": "Sunniland", "148054": "Sunniland"}
 
-    #normalize columns
+    #clean
     orders.columns = orders.columns.str.strip().str.replace("PO Line #", "PO Line#", regex=False)
 
-    # clean
     required_order_cols = ["PO Line#", "Qty Ordered"]
     for col in required_order_cols:
         if col not in orders.columns:
@@ -105,7 +109,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Palettes Each"] = orders["Item#"].map(palette_mapping)
     orders["Palettes"] = (orders["Qty Ordered"] / orders["Palettes Each"]).round(1)
     orders["Item Type"] = orders["Item#"].map(item_type_mapping)
-    orders["Unit Price"] = pd.to_numeric(orders["Unit Price"].replace('[\\$,]', '', regex=True), errors="coerce").round(2)
+    orders["Unit Price"] = pd.to_numeric(orders["Unit Price"], errors="coerce").round(2)
     orders["Merch Total"] = (orders["Qty Ordered"] * orders["Unit Price"]).round(2)
 
     orders["Requested Delivery Date"] = format_date(orders["Requested Delivery Date"])
@@ -115,6 +119,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders = orders.sort_values(by=["PO Date Sortable", "PO Num Sort"], ascending=[False, False])
 
+    #shipments
     progress.progress(40, text="Merging Shipments...")
 
     shipments = shipments.rename(columns={"PO #": "PO Number", "Buyer Item #": "Item#"})
@@ -129,21 +134,20 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders = orders.merge(shipments, how="left", on=["PO Number", "Item#"])
     orders.rename(columns={
         "BOL": "BOL#",
-        "ASN #": "ASN#"
-    }, inplace=True)
+        "ASN #": "ASN#"}, inplace=True)
 
+    #invoices
     progress.progress(60, text="Merging Invoices...")
 
     invoices = invoices.rename(columns={"Retailers PO #": "PO Number"})
+    
     if "Merchandise Total" in invoices.columns:
         invoices["Merchandise Total"] = pd.to_numeric(
-            invoices["Merchandise Total"].replace('[\\$,]', '', regex=True),
-            errors="coerce").round(2)
+            invoices["Merchandise Total"], errors="coerce").round(2)
         
     if "Discounted Amounted_Discount Amount" in invoices.columns:
         invoices["Discounted Amounted_Discount Amount"] = pd.to_numeric(
-            invoices["Discounted Amounted_Discount Amount"].replace('[\\$,]', '', regex=True),
-            errors="coerce").round(2)
+            invoices["Discounted Amounted_Discount Amount"], errors="coerce").round(2)
         
     if "Invoice Date" in invoices.columns:
         invoices["Invoice Date"] = format_date(invoices["Invoice Date"])
