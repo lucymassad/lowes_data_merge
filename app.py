@@ -176,9 +176,10 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     progress.progress(80, text="Finalizing output...")
 
-    orders["Fulfillment Status"] = "Not Invoiced"
+    orders["Fulfillment Status"] = "Not Shipped"
+    orders.loc[pd.notna(orders["Ship Date"]), "Fulfillment Status"] = "Shipped Not Invoiced"
     orders.loc[pd.notna(orders["Invoice#"]), "Fulfillment Status"] = "Invoiced"
-    orders.loc[(pd.notna(orders["Ship Date"]) & (orders["Fulfillment Status"] == "Not Invoiced")), "Fulfillment Status"] = "Shipped Not Invoiced"
+
     orders["Late Ship"] = pd.to_datetime(orders["Ship Date"], errors="coerce") > pd.to_datetime(orders["Requested Delivery Date"], errors="coerce")
     orders["Late Ship"] = orders["Late Ship"].map({True: "Yes", False: "No"}).fillna("")
 
