@@ -117,7 +117,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         orders[col] = orders[col].combine_first(orders[f"{col}_hdr"])
         orders.drop(columns=[f"{col}_hdr"], inplace=True)
 
-    # fields
+        # fields
     orders["Item#"] = orders["Buyers Catalog or Stock Keeping #"]
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
     orders["Item Name"] = orders["Product/Item Description"]
@@ -133,7 +133,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["PO Date"] = format_date(orders["PO Date"])
     orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
     orders["PO Num Sort"] = pd.to_numeric(orders["PO Number"], errors="coerce")
-    orders = orders.sort_values(by=["PO Date Sortable", "PO Num Sort"], ascending=[False, False])
 
     progress.progress(40, text="Merging Shipments...")
 
@@ -180,52 +179,17 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     )
 
     invoice_grouped = invoice_grouped.rename(columns={
-    "Invoice Number": "Invoice#",
-    "Invoice Date": "Invoice Date",
-    "Merchandise Total": "Merch. Total",
-    "Discounted Amounted_Discount Amount": "Invoice Disc."})
-    
-    orders = orders.merge(invoice_grouped, on="PO Number", how="left")
-    
-    orders["Merch. Total"] = pd.to_numeric(orders.get("Merch. Total", pd.Series(index=orders.index)), errors="coerce").fillna(0)
-    orders["Invoice Disc."] = pd.to_numeric(orders.get("Invoice Disc.", pd.Series(index=orders.index)), errors="coerce").fillna(0)
-    orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."]).round(2)
-    
-    progress.progress(60, text="Merging Invoices...")
-
-    invoices = invoices.rename(columns={"Retailers PO #": "PO Number"})
-    if "Merchandise Total" in invoices.columns:
-        invoices["Merchandise Total"] = pd.to_numeric(
-            invoices["Merchandise Total"].replace('[\\$,]', '', regex=True),
-            errors="coerce"
-        ).round(2)
-    if "Discounted Amounted_Discount Amount" in invoices.columns:
-        invoices["Discounted Amounted_Discount Amount"] = pd.to_numeric(
-            invoices["Discounted Amounted_Discount Amount"].replace('[\\$,]', '', regex=True),
-            errors="coerce"
-        ).round(2)
-    if "Invoice Date" in invoices.columns:
-        invoices["Invoice Date"] = format_date(invoices["Invoice Date"])
-
-    invoice_grouped = (
-        invoices
-        .groupby("PO Number")
-        .agg({
-            "Invoice Number": pick_notna,
-            "Invoice Date": pick_notna,
-            "Merchandise Total": pick_notna,
-            "Discounted Amounted_Discount Amount": pick_notna
-        }).reset_index()
-    )
-    
-    orders = orders.merge(invoice_grouped, on="PO Number", how="left")
-    orders.rename(columns={
-        "Discounted Amounted_Discount Amount": "Invoice Disc.",
         "Invoice Number": "Invoice#",
-        "Merchandise Total": "Merch. Total"
-    }, inplace=True)
+        "Invoice Date": "Invoice Date",
+        "Merchandise Total": "Merch. Total",
+        "Discounted Amounted_Discount Amount": "Invoice Disc."
+    })
 
-    orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."].fillna(0)).round(2)
+    orders = orders.merge(invoice_grouped, on="PO Number", how="left", validate="many_to_one")
+
+    orders["Merch. Total"] = pd.to_numeric(orders["Merch. Total"], errors="coerce").fillna(0)
+    orders["Invoice Disc."] = pd.to_numeric(orders["Invoice Disc."], errors="coerce").fillna(0)
+    orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."]).round(2)
     
     progress.progress(80, text="Finalizing output...")
 
