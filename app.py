@@ -111,7 +111,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         if col in orders.columns:
             orders[col] = format_date(orders[col])
 
-    orders["Palettes Each"] = orders["Item#"].map(palette_mapping)
+    orders["Palettes Each"] = orders["Buyers Catalog or Stock Keeping #"].map(palette_mapping)
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
     orders["Palettes"] = (orders["Qty Ordered"] / orders["Palettes Each"]).round(1)
     orders["Vendor Item#"] = orders["Buyers Catalog or Stock Keeping #"].map(vendor_item_mapping)
