@@ -192,7 +192,12 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Merch. Total"] = pd.to_numeric(orders["Merch. Total"], errors="coerce").fillna(0)
     orders["Invoice Disc."] = pd.to_numeric(orders["Invoice Disc."], errors="coerce").fillna(0)
     orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."]).round(2)
-    
+
+    # Blank out 0s for aesthetic purposes
+    orders.loc[orders["Merch. Total"] == 0, "Merch. Total"] = ""
+    orders.loc[orders["Invoice Disc."] == 0, "Invoice Disc."] = ""
+    orders.loc[orders["Net Invoiced"] == 0, "Net Invoiced"] = ""
+
     progress.progress(80, text="Finalizing output...")
 
     orders["Fulfillment Status"] = "Not Invoiced"
