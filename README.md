@@ -1,6 +1,6 @@
 # Lowe's Data Merge Tool
 
-Upload order, shipment, and invoice files then download a fully merged, formatted Excel file.
+Upload order, shipment, and invoice files then download a fully merged Excel file.
 
 ## How to Use
 1. Upload the three required `.xlsx` files.
