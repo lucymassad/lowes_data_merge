@@ -9,10 +9,15 @@ st.title("Merge Lowes Data Files")
 st.markdown("Upload your **Orders**, **Shipments**, and **Invoices** files to generate a merged Excel report.")
 
 #helpers
-def format_currency(x): return "" if pd.isna(x) else f"${x:,.2f}"
-def format_date(series): return pd.to_datetime(series, errors="coerce").dt.strftime("%m/%d/%Y")
+def format_currency(x):
+    return "" if pd.isna(x) else f"${x:,.2f}"
+
+def format_date(series):
+    return pd.to_datetime(series, errors="coerce").dt.strftime("%m/%d/%Y")
+
 def dedupe_columns(cols):
-    seen = {}; new_cols = []
+    seen = {}
+    new_cols = []
     for col in cols:
         if col not in seen:
             seen[col] = 0
@@ -21,6 +26,9 @@ def dedupe_columns(cols):
             seen[col] += 1
             new_cols.append(f"{col}.{seen[col]}")
     return new_cols
+
+def pick_notna(series):
+    return series.dropna().iloc[0] if not series.dropna().empty else ""
 
 #file uploads
 uploaded_orders = st.file_uploader("Upload Orders File (.xlsx)", type="xlsx")
@@ -154,10 +162,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         invoices["Invoice Date"] = format_date(invoices["Invoice Date"])
 
     invoice_grouped = invoices.groupby("PO Number").agg({
-        "Invoice Number": "first",
-        "Invoice Date": "first",
-        "Invoice Total": "first",
-        "Discounted Amounted_Discount Amount": "first"}).reset_index()
+        "Invoice Number": pick_notna,
+        "Invoice Date": pick_notna,
+        "Invoice Total": pick_notna,
+        "Discounted Amounted_Discount Amount": pick_notna
+    }).reset_index()
 
     orders = orders.merge(invoice_grouped, on="PO Number", how="left")
     orders.rename(columns={"Discounted Amounted_Discount Amount": "Invoice Disc.", "Invoice Number": "Invoice#"}, inplace=True)
