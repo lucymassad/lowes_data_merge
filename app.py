@@ -6,9 +6,9 @@ import pytz
 
 st.set_page_config(page_title="Lowe's Merge Tool", layout="wide")
 st.title("Merge Lowes Data Files")
-st.markdown("Upload your **Orders**, **Shipments**, and **Invoices** files to generate a clean, merged Excel report.")
+st.markdown("Upload your **Orders**, **Shipments**, and **Invoices** files to generate a merged Excel report.")
 
-# === HELPERS ===
+#helpers
 def format_currency(x): return "" if pd.isna(x) else f"${x:,.2f}"
 def format_date(series): return pd.to_datetime(series, errors="coerce").dt.strftime("%m/%d/%Y")
 def dedupe_columns(cols):
@@ -22,7 +22,7 @@ def dedupe_columns(cols):
             new_cols.append(f"{col}.{seen[col]}")
     return new_cols
 
-# === FILE UPLOAD ===
+#file uploads
 uploaded_orders = st.file_uploader("Upload Orders File (.xlsx)", type="xlsx")
 uploaded_shipments = st.file_uploader("Upload Shipments File (.xlsx)", type="xlsx")
 uploaded_invoices = st.file_uploader("Upload Invoices File (.xlsx)", type="xlsx")
@@ -40,7 +40,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     progress.progress(20, text="Cleaning orders and metadata...")
 
-    # == Mappings ==
+    #mappings
     vbu_mapping = {118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville",
                    502232: "Milazzo", 505071: "Claymont", 505496: "Gaylord", 505085: "Spring Valley Ice Melt",
                    114037: "PCI Nitrogen", 501677: "Theremorock East Inc"}
@@ -69,7 +69,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "120019": "Sunniland", "1240180": "Sunniland", "91299": "Sunniland", "335457": "Sunniland",
         "147992": "Sunniland", "148054": "Sunniland"}
 
-    # === Orders Cleanup ===
+    #clean
     orders["PO Line#"] = pd.to_numeric(orders["PO Line#"], errors="coerce")
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
     headers = orders[(orders["PO Line#"].isna()) & (orders["Qty Ordered"].isna())].copy()
@@ -82,7 +82,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         orders[col] = orders[col].combine_first(orders[f"{col}_hdr"])
         orders.drop(columns=[f"{col}_hdr"], inplace=True)
 
-    # === Derived Fields ===
+    #fields
     orders["Item#"] = orders["Buyers Catalog or Stock Keeping #"]
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
     orders["Item Name"] = orders["Item"]
@@ -170,7 +170,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
             worksheet.write(0, idx, col, header_format)
 
     file_size_kb = len(output.getvalue()) / 1024
-    progress.progress(100, text="✅ Complete!")
+    progress.progress(100, text="Complete")
     st.success("File processed")
     st.caption(f"Approx. file size: {file_size_kb:.1f} KB")
     st.info(f"Total merged rows: {len(orders):,}")
