@@ -38,7 +38,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders = pd.read_excel(uploaded_orders, dtype=str)
     shipments = pd.read_excel(uploaded_shipments, dtype=str)
     invoices = pd.read_excel(uploaded_invoices, dtype=str)
-    progress.progress(20, text="Cleaning Orders data...")
 
     vbu_mapping = {
         118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville",
