@@ -73,23 +73,26 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "120019": "Sunniland", "1240180": "Sunniland", "91299": "Sunniland", "335457": "Sunniland",
         "147992": "Sunniland", "148054": "Sunniland"}
 
+    # Normalize column names for consistency
+    orders.columns = orders.columns.str.strip().str.replace("PO Line #", "PO Line#", regex=False)
+
     # clean
-    required_order_cols = ["PO Line #", "Qty Ordered"]
+    required_order_cols = ["PO Line#", "Qty Ordered"]
     for col in required_order_cols:
         if col not in orders.columns:
             st.error(f"Missing required column in orders file: '{col}'")
             st.write("Columns found:", list(orders.columns))
             st.stop()
 
-    orders["PO Line #"] = pd.to_numeric(orders["PO Line #"], errors="coerce")
+    orders["PO Line#"] = pd.to_numeric(orders["PO Line#"], errors="coerce")
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
 
     headers = orders[
-        (orders["PO Line #"].isna()) & (orders["Qty Ordered"].isna())
+        (orders["PO Line#"].isna()) & (orders["Qty Ordered"].isna())
     ].copy()
 
     details = orders[
-        (orders["PO Line #"].notna()) | (orders["Qty Ordered"].notna())
+        (orders["PO Line#"].notna()) | (orders["Qty Ordered"].notna())
     ].copy()
 
     meta_cols = [
@@ -105,10 +108,10 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         orders[col] = orders[col].combine_first(orders[f"{col}_hdr"])
         orders.drop(columns=[f"{col}_hdr"], inplace=True)
 
-    #fields
+    # fields
     orders["Item#"] = orders["Buyers Catalog or Stock Keeping #"]
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
-    orders["Item Name"] = orders.get("Item", "")
+    orders["Item Name"] = orders["Item"] if "Item" in orders.columns else ""
     orders["VBU#"] = pd.to_numeric(orders["Vendor #"], errors="coerce")
     orders["VBU Name"] = orders["VBU#"].map(vbu_mapping)
     orders["Palettes Each"] = orders["Item#"].map(palette_mapping)
