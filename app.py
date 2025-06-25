@@ -82,16 +82,12 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
 
-    # Identify header rows (rows with no PO Line# and no Qty Ordered)
-    is_header_row = orders["PO Line#"].isna() & orders["Qty Ordered"].isna()
+    # Forward-fill to apply header info like PO Date, Vendor #, etc. to all item rows
+    orders = orders.sort_values(["PO# Num", "Vendor #", "PO Line#"], ascending=[True, True, True])
+    orders = orders.ffill().infer_objects(copy=False)
 
-    # Forward-fill only on those rows, then merge back with original
-    header_filled = orders[is_header_row].sort_values(["PO Number"]).ffill().infer_objects(copy=False)
-    detail_rows = orders[~is_header_row]
-    orders = pd.concat([header_filled, detail_rows], ignore_index=True)
-
-    # Remove leftover blank rows that aren't real items
-    orders = orders[orders["PO Line#"].notna()].copy()
+    # Keep only real line items (rows with PO Line# or Qty Ordered)
+    orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
 
     # Optional safety: avoid accidental vendor duplication
     orders = orders.drop_duplicates(subset=["PO Number", "PO Line#", "Buyers Catalog or Stock Keeping #", "Vendor #"])
