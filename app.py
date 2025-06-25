@@ -74,13 +74,22 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "147992": "Sunniland", "148054": "Sunniland"}
 
     #clean
+    required_order_cols = ["PO Line#", "Qty Ordered"]
+    for col in required_order_cols:
+        if col not in orders.columns:
+            st.error(f"Missing required column in orders file: '{col}'")
+            st.write("Columns found:", list(orders.columns))
+            st.stop()
+
     orders["PO Line#"] = pd.to_numeric(orders["PO Line#"], errors="coerce")
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
+
     headers = orders[(orders["PO Line#"].isna()) & (orders["Qty Ordered"].isna())].copy()
     details = orders[(orders["PO Line#"].notna()) | (orders["Qty Ordered"].notna())].copy()
-    meta_cols = ["PO Number", "PO Date", "Vendor #", "Ship To Name", "Ship To State", "Requested Delivery Date"]
 
+    meta_cols = ["PO Number", "PO Date", "Vendor #", "Ship To Name", "Ship To State", "Requested Delivery Date"]
     headers_meta = headers[meta_cols].drop_duplicates(subset=["PO Number"])
+
     orders = details.merge(headers_meta, on="PO Number", how="left", suffixes=("", "_hdr"))
     for col in meta_cols[1:]:
         orders[col] = orders[col].combine_first(orders[f"{col}_hdr"])
