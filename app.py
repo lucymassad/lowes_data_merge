@@ -125,15 +125,26 @@ orders = orders.merge(
 
 progress.progress(60, text="Merging Invoices...")
 
-  progress.progress(60,text="Merging Invoices...")
-  invoices.columns=invoices.columns.astype(str).str.strip()
-  invoice_collapsed=(invoices.groupby("Invoice Number",as_index=False)
-    .agg({"Retailers PO #":"first","Invoice Date":"first",
-          "Discounted Amounted_Discount Amount":"first",
-          "Invoice Total":"first"}))
-  invoice_collapsed["Invoice Total"]=pd.to_numeric(invoice_collapsed["Invoice Total"].replace('[\$,]','',regex=True),errors="coerce").apply(format_currency)
-  invoice_collapsed["Discounted Amounted_Discount Amount"]=pd.to_numeric(invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\$,]','',regex=True),errors="coerce").apply(format_currency)
-  invoice_collapsed["Invoice Date"]=format_date(invoice_collapsed["Invoice Date"])
+invoices.columns = invoices.columns.astype(str).str.strip()
+invoice_collapsed = (invoices.groupby("Invoice Number", as_index=False)
+  .agg({
+    "Retailers PO #": "first",
+    "Invoice Date": "first",
+    "Discounted Amounted_Discount Amount": "first",
+    "Invoice Total": "first"
+  }))
+
+invoice_collapsed["Invoice Total"] = pd.to_numeric(
+  invoice_collapsed["Invoice Total"].replace('[\$,]', '', regex=True),
+  errors="coerce"
+).apply(format_currency)
+
+invoice_collapsed["Discounted Amounted_Discount Amount"] = pd.to_numeric(
+  invoice_collapsed["Discounted Amounted_Discount Amount"].replace('[\$,]', '', regex=True),
+  errors="coerce"
+).apply(format_currency)
+
+invoice_collapsed["Invoice Date"] = format_date(invoice_collapsed["Invoice Date"])
 
   orders["PO_clean"]=orders["PO Number"].astype(str).str.strip().str.replace(r"\.0$","",regex=True)
   invoice_collapsed["PO_clean"]=invoice_collapsed["Retailers PO #"].astype(str).str.strip().str.replace(r"\.0$","",regex=True)
