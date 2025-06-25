@@ -186,11 +186,9 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "Merchandise Total": "Merch. Total"
     }, inplace=True)
 
-    orders["Net Invoiced"] = (
-        pd.to_numeric(orders["Merch. Total"], errors="coerce") -
-        pd.to_numeric(orders["Invoice Disc."], errors="coerce").fillna(0)
-    ).round(2)
-
+    orders["Merch. Total"] = pd.to_numeric(orders["Merch. Total"], errors="coerce")
+    orders["Invoice Disc."] = pd.to_numeric(orders["Invoice Disc."], errors="coerce").fillna(0)
+    orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."]).round(2)
 
     progress.progress(60, text="Merging Invoices...")
 
