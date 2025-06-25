@@ -23,6 +23,9 @@ def dedupe_columns(cols):
     return new_cols
 
 # === FILE UPLOAD ===
+    orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
+    orders["PO Num Sort"] = pd.to_numeric(orders["PO Number"], errors="coerce")
+    orders = orders.sort_values(by=["PO Date Sortable", "PO Num Sort"], ascending=[False, False])
 uploaded_orders = st.file_uploader("Upload Orders File (.xlsx)", type="xlsx")
 uploaded_shipments = st.file_uploader("Upload Shipments File (.xlsx)", type="xlsx")
 uploaded_invoices = st.file_uploader("Upload Invoices File (.xlsx)", type="xlsx")
@@ -147,6 +150,8 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
             orders[col] = ""
 
     orders = orders[final_cols].fillna("")
+    # Drop temp sorting columns
+    orders.drop(columns=["PO Date Sortable", "PO Num Sort"], inplace=True)
 
     progress.progress(100, text="Formatting and exporting Excel file...")
 
