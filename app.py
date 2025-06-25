@@ -83,7 +83,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
   for col in ["ASN Date","Ship Date"]:
     shipments[col]=format_date(shipments[col])
   shipments=shipments[["PO Number","Buyers Catalog or Stock Keeping #","ASN Date","Ship Date","BOL","SCAC"]]
-  orders=orders.merge(shipments,on=["PO Number","Buyers Catalog or Stock Keeping #"],how="left")
+  orders=orders.merge(
+  shipments,
+  on=["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"],
+  how="left"
+)
 
   progress.progress(60,text="Merging Invoices...")
   invoices.columns=invoices.columns.astype(str).str.strip()
