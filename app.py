@@ -85,7 +85,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
   shipments=shipments[["PO Number","Buyers Catalog or Stock Keeping #","Ship To Location","ASN Date","Ship Date","BOL","SCAC"]]
   orders=orders.merge(
   shipments,
-  on=["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"],
+  on=["PO Number", "PO Line#"],
   how="left"
 )
 
