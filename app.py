@@ -179,17 +179,18 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         }).reset_index()
     )
 
+    invoice_grouped = invoice_grouped.rename(columns={
+    "Invoice Number": "Invoice#",
+    "Invoice Date": "Invoice Date",
+    "Merchandise Total": "Merch. Total",
+    "Discounted Amounted_Discount Amount": "Invoice Disc."})
+    
     orders = orders.merge(invoice_grouped, on="PO Number", how="left")
-    orders.rename(columns={
-        "Discounted Amounted_Discount Amount": "Invoice Disc.",
-        "Invoice Number": "Invoice#",
-        "Merchandise Total": "Merch. Total"
-    }, inplace=True)
-
-    orders["Merch. Total"] = pd.to_numeric(orders["Merch. Total"], errors="coerce").fillna(0)
-    orders["Invoice Disc."] = pd.to_numeric(orders["Invoice Disc."], errors="coerce").fillna(0)
+    
+    orders["Merch. Total"] = pd.to_numeric(orders.get("Merch. Total", pd.Series(index=orders.index)), errors="coerce").fillna(0)
+    orders["Invoice Disc."] = pd.to_numeric(orders.get("Invoice Disc.", pd.Series(index=orders.index)), errors="coerce").fillna(0)
     orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."]).round(2)
-
+    
     progress.progress(60, text="Merging Invoices...")
 
     invoices = invoices.rename(columns={"Retailers PO #": "PO Number"})
