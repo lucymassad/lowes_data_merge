@@ -112,12 +112,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     progress.progress(60, text="Merging Invoices...")
 
-    invoices = invoices.rename(columns={"Retailers PO #": "PO Number", "Buyer's Catalog or Stock Keeping #": "Item#"})
-    potential_keys = ["PO Number", "Item#", "Vendor Item#"]
-    merge_keys = [key for key in potential_keys if key in invoices.columns and key in orders.columns]
-    invoice_cols = merge_keys + [col for col in ["Invoice Number", "Invoice Date", "Invoice Total", "Discounted Amounted_Discount Amount"] if col in invoices.columns]
-    invoices = invoices[invoice_cols].copy()
-
+    invoices = invoices.rename(columns={"Retailers PO #": "PO Number"})
     if "Invoice Total" in invoices.columns:
         invoices["Invoice Total"] = pd.to_numeric(invoices["Invoice Total"].replace('[\\$,]', '', regex=True), errors="coerce")
         invoices["Invoice Total"] = invoices["Invoice Total"].apply(format_currency)
@@ -127,7 +122,14 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     if "Invoice Date" in invoices.columns:
         invoices["Invoice Date"] = format_date(invoices["Invoice Date"])
 
-    orders = orders.merge(invoices, on=merge_keys, how="left")
+    invoice_grouped = invoices.groupby("PO Number").agg({
+        "Invoice Number": "first",
+        "Invoice Date": "first",
+        "Invoice Total": "first",
+        "Discounted Amounted_Discount Amount": "first"
+    }).reset_index()
+
+    orders = orders.merge(invoice_grouped, on="PO Number", how="left")
     orders.rename(columns={"Discounted Amounted_Discount Amount": "Invoice Disc.", "Invoice Number": "Invoice#"}, inplace=True)
 
     progress.progress(80, text="Finalizing output...")
