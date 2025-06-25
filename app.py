@@ -9,6 +9,25 @@ st.set_page_config(page_title="Lowe's Merge Tool", layout="wide")
 st.title("Merge Lowes Data Files")
 st.markdown("Upload your **Orders**, **Shipments**, and **Invoices** files to generate a clean, merged Excel report.")
 
+# Define helper functions before use
+def format_currency(x):
+    return "" if pd.isna(x) else f"${x:,.2f}"
+
+def format_date(series):
+    return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
+
+def dedupe_columns(cols):
+    seen = {}
+    new_cols = []
+    for col in cols:
+        if col not in seen:
+            seen[col] = 0
+            new_cols.append(col)
+        else:
+            seen[col] += 1
+            new_cols.append(f"{col}.{seen[col]}")
+    return new_cols
+
 uploaded_orders = st.file_uploader("Upload Orders File (.xlsx)", type="xlsx")
 uploaded_shipments = st.file_uploader("Upload Shipments File (.xlsx)", type="xlsx")
 uploaded_invoices = st.file_uploader("Upload Invoices File (.xlsx)", type="xlsx")
@@ -57,41 +76,23 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "147992": "Sunniland", "148054": "Sunniland"
     }
 
-def format_currency(x):
-    return "" if pd.isna(x) else f"${x:,.2f}"
+    orders.columns = orders.columns.astype(str).str.strip()
+    required_cols = ["PO Number", "PO Line#"]
+    missing = [col for col in required_cols if col not in orders.columns]
+    if missing:
+        st.error(f"Your {missing} is either missing or in the incorrect format.")
+        st.stop()
 
-def format_date(series):
-    return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
+    orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
+    orders = orders.sort_values(["PO Date", "PO# Num"], ascending=[False, False]).ffill().infer_objects(copy=False)
+    orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
+    orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
+    orders["Unit Price"] = orders["Unit Price"].replace('[\\$,]', '', regex=True).astype(float)
+    orders["VBU Name"] = pd.to_numeric(orders["Vendor #"], errors="coerce").map(vbu_mapping)
+    orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
 
-def dedupe_columns(cols):
-    seen = {}
-    new_cols = []
-    for col in cols:
-        if col not in seen:
-            seen[col] = 0
-            new_cols.append(col)
-        else:
-            seen[col] += 1
-            new_cols.append(f"{col}.{seen[col]}")
-    return new_cols
-
-orders.columns = orders.columns.astype(str).str.strip()
-required_cols = ["PO Number", "PO Line#"]
-missing = [col for col in required_cols if col not in orders.columns]
-if missing:
-    st.error(f"Your {missing} is either missing or in the incorrect format.")
-    st.stop()
-
-orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
-orders = orders.sort_values(["PO Date", "PO# Num"], ascending=[False, False]).ffill().infer_objects(copy=False)
-orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
-orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
-orders["Unit Price"] = orders["Unit Price"].replace('[\\$,]', '', regex=True).astype(float)
-orders["VBU Name"] = pd.to_numeric(orders["Vendor #"], errors="coerce").map(vbu_mapping)
-orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
-
-for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
-    orders[col] = format_date(orders[col])
+    for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
+        orders[col] = format_date(orders[col])
 
 orders["Palettes"] = orders["Buyers Catalog or Stock Keeping #"].map(palette_mapping)
 orders["PO Line#"] = orders["PO Line#"]
