@@ -9,11 +9,8 @@ st.set_page_config(page_title="Lowe's Merge Tool", layout="wide")
 st.title("Merge Lowes Data Files")
 st.markdown("Upload your **Orders**, **Shipments**, and **Invoices** files to generate a clean, merged Excel report.")
 
-def format_currency(x):
-    return "" if pd.isna(x) else f"${x:,.2f}"
-
-def format_date(series):
-    return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
+def format_currency(x): return "" if pd.isna(x) else f"${x:,.2f}"
+def format_date(series): return pd.to_datetime(series, errors="coerce").dt.strftime("%-m/%-d/%Y")
 
 def dedupe_columns(cols):
     seen = {}
@@ -38,10 +35,12 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     shipments = pd.read_excel(uploaded_shipments, dtype=str)
     invoices = pd.read_excel(uploaded_invoices, dtype=str)
 
+    progress.progress(20, text="Cleaning Orders data...")
+
     vbu_mapping = {
-        118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville",
-        502232: "Milazzo", 505071: "Claymont", 505496: "Gaylord", 505085: "Spring Valley Ice Melt",
-        114037: "PCI Nitrogen", 501677: "Theremorock East Inc"
+        118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville", 502232: "Milazzo",
+        505071: "Claymont", 505496: "Gaylord", 505085: "Spring Valley Ice Melt", 114037: "PCI Nitrogen",
+        501677: "Theremorock East Inc"
     }
 
     palette_mapping = {
@@ -82,22 +81,18 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         st.stop()
 
     orders["PO# Num"] = pd.to_numeric(orders["PO Number"], errors="coerce")
-    orders = orders.sort_values(["PO Date", "PO# Num"], ascending=[False, False]).ffill().infer_objects(copy=False)
+    orders = orders.sort_values(["PO Number", "PO Line#"]).ffill().infer_objects(copy=False)
     orders = orders[orders["PO Line#"].notna() | orders["Qty Ordered"].notna()].copy()
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
-    orders["Unit Price"] = orders["Unit Price"].replace('[\\$,]', '', regex=True).astype(float)
+    orders["Unit Price"] = orders["Unit Price"].replace('[\$,]', '', regex=True).astype(float)
     orders["VBU Name"] = pd.to_numeric(orders["Vendor #"], errors="coerce").map(vbu_mapping)
     orders["Unit Price"] = orders["Unit Price"].apply(format_currency)
-
     for col in ["PO Date", "Requested Delivery Date", "Ship Dates"]:
         orders[col] = format_date(orders[col])
 
     orders["Palettes"] = orders["Buyers Catalog or Stock Keeping #"].map(palette_mapping)
     orders["Vendor Item#"] = orders["Buyers Catalog or Stock Keeping #"].map(vendor_item_mapping)
     orders["Item Type"] = orders["Buyers Catalog or Stock Keeping #"].map(item_type_mapping)
-    orders["Month Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.month
-    orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
-    orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str)
 
     progress.progress(40, text="Merging Shipments...")
 
@@ -111,15 +106,14 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     for col in ["ASN Date", "Ship Date"]:
         shipments[col] = pd.to_datetime(shipments[col], errors="coerce")
 
-    shipment_collapsed = (
-        shipments.groupby(["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"], as_index=False)
-        .agg({
-            "ASN Date": "max",
-            "Ship Date": "max",
-            "BOL": lambda x: "/".join(sorted(set(x.dropna()))),
-            "SCAC": lambda x: "/".join(sorted(set(x.dropna())))
-        })
-    )
+    shipment_collapsed = shipments.groupby(
+        ["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"], as_index=False
+    ).agg({
+        "ASN Date": "max",
+        "Ship Date": "max",
+        "BOL": lambda x: "/".join(sorted(set(x.dropna()))),
+        "SCAC": lambda x: "/".join(sorted(set(x.dropna())))
+    })
 
     shipment_collapsed["ASN Date"] = format_date(shipment_collapsed["ASN Date"])
     shipment_collapsed["Ship Date"] = format_date(shipment_collapsed["Ship Date"])
@@ -133,44 +127,68 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     progress.progress(60, text="Merging Invoices...")
 
     invoices.columns = invoices.columns.astype(str).str.strip()
-    invoice_collapsed = invoices.groupby("Invoice Number", as_index=False).agg({
+    st.write("Invoice file columns:", invoices.columns.tolist())  # Debug aid
+
+    discount_col = next((col for col in invoices.columns if "discount" in col.lower()), None)
+    invoice_agg = {
         "Retailers PO #": "first",
         "Invoice Date": "first",
-        "Discounted Amount_Discount Amount": "first",
         "Invoice Total": "first"
-    })
+    }
+    if discount_col:
+        invoice_agg[discount_col] = "first"
+
+    invoice_collapsed = invoices.groupby("Invoice Number", as_index=False).agg(invoice_agg)
 
     invoice_collapsed["Invoice Total"] = pd.to_numeric(
         invoice_collapsed["Invoice Total"].replace('[\$,]', '', regex=True), errors="coerce"
     ).apply(format_currency)
 
-    invoice_collapsed["Discounted Amount_Discount Amount"] = pd.to_numeric(
-        invoice_collapsed["Discounted Amount_Discount Amount"].replace('[\$,]', '', regex=True), errors="coerce"
-    ).apply(format_currency)
+    if discount_col:
+        invoice_collapsed[discount_col] = pd.to_numeric(
+            invoice_collapsed[discount_col].replace('[\$,]', '', regex=True), errors="coerce"
+        ).apply(format_currency)
 
     invoice_collapsed["Invoice Date"] = format_date(invoice_collapsed["Invoice Date"])
 
     orders["PO_clean"] = orders["PO Number"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
     invoice_collapsed["PO_clean"] = invoice_collapsed["Retailers PO #"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
 
-    orders = orders.merge(
-        invoice_collapsed[["PO_clean", "Invoice Number", "Invoice Date", "Discounted Amount_Discount Amount", "Invoice Total"]],
-        on="PO_clean", how="left"
-    ).drop(columns="PO_clean")
+    if discount_col:
+        orders = orders.merge(
+            invoice_collapsed[["PO_clean", "Invoice Number", "Invoice Date", discount_col, "Invoice Total"]],
+            on="PO_clean", how="left"
+        )
+        orders = orders.rename(columns={discount_col: "Invoice Disc."})
+    else:
+        orders = orders.merge(
+            invoice_collapsed[["PO_clean", "Invoice Number", "Invoice Date", "Invoice Total"]],
+            on="PO_clean", how="left"
+        )
+        orders["Invoice Disc."] = ""
+
+    orders.drop(columns="PO_clean", inplace=True)
 
     progress.progress(80, text="Finalizing output...")
 
     orders["Fulfillment Status"] = "Not Invoiced"
     orders.loc[pd.notna(orders["Invoice Number"]), "Fulfillment Status"] = "Invoiced"
-    orders.loc[(pd.notna(orders["Ship Date"]) & (orders["Fulfillment Status"] == "Not Invoiced")), "Fulfillment Status"] = "Shipped Not Invoiced"
+    orders.loc[
+        (pd.notna(orders["Ship Date"]) & (orders["Fulfillment Status"] == "Not Invoiced")),
+        "Fulfillment Status"
+    ] = "Shipped Not Invoiced"
 
     orders["Late Ship"] = pd.to_datetime(orders["Ship Date"], errors="coerce") > pd.to_datetime(orders["Requested Delivery Date"], errors="coerce")
     orders["Late Ship"] = orders["Late Ship"].map({True: "Yes", False: "No"}).fillna("")
-    orders["Ship to Name"] = orders["Ship To Name"]
+    orders["Ship to Name"] = orders.get("Ship To Name", "")
 
     orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
     orders = orders.sort_values(by=["PO Date Sortable", "PO# Num"], ascending=[False, False])
     orders.drop(columns=["PO Date Sortable", "PO# Num"], inplace=True)
+
+    orders["Month Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.month
+    orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
+    orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str)
 
     orders = orders.rename(columns={
         "PO Number": "PO#",
@@ -178,7 +196,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "Buyers Catalog or Stock Keeping #": "Item#",
         "Item": "Item Name",
         "Invoice Number": "Invoice#",
-        "Discounted Amount_Discount Amount": "Invoice Disc.",
         "BOL": "BOL#"
     })
 
