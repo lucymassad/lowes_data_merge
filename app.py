@@ -63,7 +63,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     st.stop()
 
   orders["PO# Num"]=pd.to_numeric(orders["PO Number"],errors="coerce")
-  orders=orders.sort_values(["PO Number","PO Line#"]).ffill().infer_objects(copy=False)
+  orders=orders.sort_values(["PO Date","PO# Num"],ascending=[False,False]).ffill().infer_objects(copy=False)
   orders=orders[orders["PO Line#"].notna()|orders["Qty Ordered"].notna()].copy()
   orders["Qty Ordered"]=pd.to_numeric(orders["Qty Ordered"],errors="coerce")
   orders["Unit Price"]=orders["Unit Price"].replace('[\$,]','',regex=True).astype(float)
@@ -77,6 +77,9 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
   orders["Ship To Code"]=orders["Ship To Location"]
   orders["Vendor Item#"]=orders["Buyers Catalog or Stock Keeping #"].map(vendor_item_mapping)
   orders["Item Type"]=orders["Buyers Catalog or Stock Keeping #"].map(item_type_mapping)
+  orders["Month Filter"]=pd.to_datetime(orders["PO Date"],errors="coerce").dt.month
+  orders["Year Filter"]=pd.to_datetime(orders["PO Date"],errors="coerce").dt.year
+  orders["Quarter Filter"]="Q"+pd.to_datetime(orders["PO Date"],errors="coerce").dt.quarter.astype(str)
 
   progress.progress(40,text="Merging Shipments...")
   shipments=shipments.rename(columns={
@@ -84,6 +87,9 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     "Buyer Item #": "Buyers Catalog or Stock Keeping #",
     "Location #": "Ship To Location"
   })
+
+  shipments.columns = pd.Series(shipments.columns).astype(str).str.strip()
+  shipments.columns = pd.io.parsers.ParserBase({'names': shipments.columns})._maybe_dedup_names()
 
   for col in ["ASN Date","Ship Date"]:
     shipments[col]=pd.to_datetime(shipments[col],errors="coerce")
