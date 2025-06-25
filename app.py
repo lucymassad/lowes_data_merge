@@ -216,7 +216,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
             "Discounted Amounted_Discount Amount": pick_notna
         }).reset_index()
     )
-
+    
     orders = orders.merge(invoice_grouped, on="PO Number", how="left")
     orders.rename(columns={
         "Discounted Amounted_Discount Amount": "Invoice Disc.",
