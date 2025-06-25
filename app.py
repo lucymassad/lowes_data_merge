@@ -23,9 +23,6 @@ def dedupe_columns(cols):
     return new_cols
 
 # === FILE UPLOAD ===
-    orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
-    orders["PO Num Sort"] = pd.to_numeric(orders["PO Number"], errors="coerce")
-    orders = orders.sort_values(by=["PO Date Sortable", "PO Num Sort"], ascending=[False, False])
 uploaded_orders = st.file_uploader("Upload Orders File (.xlsx)", type="xlsx")
 uploaded_shipments = st.file_uploader("Upload Shipments File (.xlsx)", type="xlsx")
 uploaded_invoices = st.file_uploader("Upload Invoices File (.xlsx)", type="xlsx")
@@ -101,6 +98,10 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Requested Delivery Date"] = format_date(orders["Requested Delivery Date"])
     orders["PO Date"] = format_date(orders["PO Date"])
 
+    orders["PO Date Sortable"] = pd.to_datetime(orders["PO Date"], errors="coerce")
+    orders["PO Num Sort"] = pd.to_numeric(orders["PO Number"], errors="coerce")
+    orders = orders.sort_values(by=["PO Date Sortable", "PO Num Sort"], ascending=[False, False])
+
     progress.progress(40, text="Merging Shipments...")
 
     shipments = shipments.rename(columns={"PO #": "PO Number", "Buyer Item #": "Item#"})
@@ -109,7 +110,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     shipments["ASN Date"] = format_date(shipments["ASN Date"])
     shipments["Ship Date"] = format_date(shipments["Ship Date"])
 
-    orders = orders.merge(shipments, how="left", on=["PO Number", "Item"])
+    orders = orders.merge(shipments, how="left", on=["PO Number", "Item#"])
     orders.rename(columns={"BOL": "BOL#"}, inplace=True)
 
     progress.progress(60, text="Merging Invoices...")
