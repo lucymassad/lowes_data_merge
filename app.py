@@ -108,7 +108,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     #fields
     orders["Item#"] = orders["Buyers Catalog or Stock Keeping #"]
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
-    orders["Item Name"] = orders["Item"]
+    orders["Item Name"] = orders.get("Item", "")
     orders["VBU#"] = pd.to_numeric(orders["Vendor #"], errors="coerce")
     orders["VBU Name"] = orders["VBU#"].map(vbu_mapping)
     orders["Palettes Each"] = orders["Item#"].map(palette_mapping)
