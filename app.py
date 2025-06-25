@@ -49,8 +49,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
                        "97809": 12, "167411": 4, "552704": 35, "91900": 12, "961539": 50, "552697": 32,
                        "71918": 12, "94833": 60, "552706": 32, "72801": 60, "101760": 50}
 
-    vendor_item_mapping = {
-        "4983612": "B8110200", "4983613": "B8110300", "5113267": "B8110100", "335456": "B1195080",
+    vendor_item_mapping = {"4983612": "B8110200", "4983613": "B8110300", "5113267": "B8110100", "335456": "B1195080",
         "552696": "B1195020", "5516714": "B8100731", "5516716": "B8100732", "5516715": "B8100733",
         "71894": "B1246160", "72931": "B1224080", "92951": "B1224060", "97086": "B1260060",
         "97809": "B1201460", "167411": "B1237440", "552704": "B1195010", "91900": "B1202360",
@@ -58,18 +57,16 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "552706": "B1195050", "72801": "B1202380", "101760": "B2063400", "120019": "B1200190",
         "1240180": "B1242620", "91299": "B1202390", "4350231": "B4973300", "876249": "B4905700",
         "758650": "B4905600", "243942": "B4904900", "335457": "B2241150", "147992": "B1288200",
-        "148054": "B1298200"
-    }
-    item_type_mapping = {
-        "4983612": "Commodity", "4983613": "Commodity", "5113267": "Commodity", "335456": "Sunniland",
+        "148054": "B1298200"}
+
+    item_type_mapping = {"4983612": "Commodity", "4983613": "Commodity", "5113267": "Commodity", "335456": "Sunniland",
         "552696": "Sunniland", "5516714": "Soil", "5516716": "Soil", "5516715": "Soil",
         "71894": "Sunniland", "72931": "Sunniland", "92951": "Sunniland", "97086": "Sunniland",
         "97809": "Sunniland", "167411": "Sunniland", "552704": "Sunniland", "91900": "Sunniland",
         "961539": "Sunniland", "552697": "Sunniland", "71918": "Sunniland", "94833": "Sunniland",
         "552706": "Sunniland", "72801": "Sunniland", "101760": "Ice Melt", "1053900": "Ice Melt",
         "120019": "Sunniland", "1240180": "Sunniland", "91299": "Sunniland", "335457": "Sunniland",
-        "147992": "Sunniland", "148054": "Sunniland"
-    }
+        "147992": "Sunniland", "148054": "Sunniland"}
 
     orders["PO Line#"] = pd.to_numeric(orders["PO Line#"], errors="coerce")
     orders["Qty Ordered"] = pd.to_numeric(orders["Qty Ordered"], errors="coerce")
@@ -105,9 +102,9 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     shipments = shipments.rename(columns={"PO #": "PO Number", "Buyer Item #": "Item#"})
     shipment_cols = ["PO Number", "Item#", "Location #", "ASN Date", "Ship Date", "BOL", "SCAC"]
-    shipments = shipments[shipment_cols].copy()
-    shipments["ASN Date"] = format_date(shipments["ASN Date"])
-    shipments["Ship Date"] = format_date(shipments["Ship Date"])
+    shipments = shipments[[col for col in shipment_cols if col in shipments.columns]].copy()
+    if "ASN Date" in shipments: shipments["ASN Date"] = format_date(shipments["ASN Date"])
+    if "Ship Date" in shipments: shipments["Ship Date"] = format_date(shipments["Ship Date"])
 
     orders = orders.merge(shipments, how="left", on=["PO Number", "Item#"])
     orders.rename(columns={"BOL": "BOL#"}, inplace=True)
@@ -119,16 +116,17 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     invoice_merge_cols = [col for col in invoice_merge_cols if col in invoices.columns]
     invoices = invoices[invoice_merge_cols]
 
-    if "Invoice Total" in invoices:
+    if "Invoice Total" in invoices.columns:
         invoices["Invoice Total"] = pd.to_numeric(invoices["Invoice Total"].replace('[\\$,]', '', regex=True), errors="coerce")
         invoices["Invoice Total"] = invoices["Invoice Total"].apply(format_currency)
-    if "Discounted Amounted_Discount Amount" in invoices:
+    if "Discounted Amounted_Discount Amount" in invoices.columns:
         invoices["Discounted Amounted_Discount Amount"] = pd.to_numeric(invoices["Discounted Amounted_Discount Amount"].replace('[\\$,]', '', regex=True), errors="coerce")
         invoices["Discounted Amounted_Discount Amount"] = invoices["Discounted Amounted_Discount Amount"].apply(format_currency)
-    if "Invoice Date" in invoices:
+    if "Invoice Date" in invoices.columns:
         invoices["Invoice Date"] = format_date(invoices["Invoice Date"])
 
-    orders = orders.merge(invoices, on=["PO Number", "Item#", "Vendor Item#"], how="left")
+    merge_keys = [col for col in ["PO Number", "Item#", "Vendor Item#"] if col in invoices.columns and col in orders.columns]
+    orders = orders.merge(invoices, on=merge_keys, how="left")
     orders.rename(columns={"Discounted Amounted_Discount Amount": "Invoice Disc.", "Invoice Number": "Invoice#"}, inplace=True)
 
     progress.progress(80, text="Finalizing output...")
