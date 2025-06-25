@@ -82,7 +82,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
   shipments=shipments.rename(columns={"PO #":"PO Number","Buyer Item #":"Buyers Catalog or Stock Keeping #"})
   for col in ["ASN Date","Ship Date"]:
     shipments[col]=format_date(shipments[col])
-  shipments=shipments[["PO Number","Buyers Catalog or Stock Keeping #","ASN Date","Ship Date","BOL","SCAC"]]
+  shipments=shipments[["PO Number","Buyers Catalog or Stock Keeping #","Ship To Location","ASN Date","Ship Date","BOL","SCAC"]]
   orders=orders.merge(
   shipments,
   on=["PO Number", "Buyers Catalog or Stock Keeping #", "Ship To Location"],
