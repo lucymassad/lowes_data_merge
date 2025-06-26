@@ -90,7 +90,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     meta_cols = [
         "PO Number", "PO Date", "Vendor #",
-        "Ship To Name", "Ship To State", "Requested Delivery Date"]
+        "Ship To Name", "Ship To City", "Ship To State", "Requested Delivery Date"]
 
     headers_meta = headers[meta_cols].drop_duplicates(subset=["PO Number"])
 
@@ -193,7 +193,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     final_cols = [
         "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
-        "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To State",
+        "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To City", "Ship To State",
         "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "ASN#",
         "BOL#", "SCAC", "Invoice#", "Invoice Date", "Merch. Total", "Invoice Disc.", "Net Invoiced",
         "Month Filter", "Year Filter", "Quarter Filter"]
