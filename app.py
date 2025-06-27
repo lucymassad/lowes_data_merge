@@ -74,6 +74,15 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     #clean
     orders.columns = orders.columns.str.strip().str.replace("PO Line #", "PO Line#", regex=False)
 
+    #handle Product/Item Description or Item columns
+    if "Product/Item Description" in orders.columns:
+        orders["Item Name"] = orders["Product/Item Description"]
+    elif "Item" in orders.columns:
+        orders["Item Name"] = orders["Item"]
+    else:
+        st.error("Missing both 'Product/Item Description' and 'Item' columns in orders file.")
+        st.stop()
+
     required_order_cols = ["PO Line#", "Qty Ordered"]
     for col in required_order_cols:
         if col not in orders.columns:
@@ -102,7 +111,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     #fields
     orders["Item#"] = orders["Buyers Catalog or Stock Keeping #"]
-    orders["Item Name"] = orders["Product/Item Description"]
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
     orders["VBU#"] = pd.to_numeric(orders["Vendor #"], errors="coerce")
     orders["VBU Name"] = orders["VBU#"].map(vbu_mapping)
