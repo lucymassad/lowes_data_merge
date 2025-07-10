@@ -6,7 +6,8 @@ import pytz
 
 st.set_page_config(page_title="Lowe's Data Merge Tool", layout="wide")
 st.title("Merge Lowes Data Files")
-st.markdown("Upload **Orders**, **Shipments**, and **Invoices** files to generate a merged Excel report. Files must be in the original SPS downloaded format or copy and pasted into a seperate Excel using the exact same format.")
+st.markdown("Upload **Orders**, **Shipments**, and **Invoices** files to generate a merged Excel report. 
+Files must be in the original SPS downloaded format or copy and pasted into a seperate Excel using the exact same format.")
 
 #helpers
 def format_date(series):
