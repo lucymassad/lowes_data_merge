@@ -24,7 +24,7 @@ uploaded_invoices = st.file_uploader("Upload Invoices File (.xlsx)", type="xlsx"
 
 #progress bar
 if uploaded_orders and uploaded_shipments and uploaded_invoices:
-    progress = st.progress(0, text="Reading Files...")
+    progress = st.progress(0, text="Reading Files... (yes, this part takes a moment)")
 
     orders = pd.read_excel(uploaded_orders, dtype=str)
     shipments = pd.read_excel(uploaded_shipments, dtype=str)
@@ -62,16 +62,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "335457": "B2241150", "1240180": "B1242620", "97809": "B1201460", "167411": "B1237440",
         "335456": "B1195080", "197914": "B1195060", "552706": "B1195050", "552696": "B1195020",
         "552697": "B1195040", "45379": "B1200190"}
-
-    item_type_mapping = {
-        "4983612": "Commodity", "4983613": "Commodity", "5113267": "Commodity", "335456": "Sunniland",
-        "552696": "Sunniland", "5516714": "Soil", "5516716": "Soil", "5516715": "Soil",
-        "71894": "Sunniland", "72931": "Sunniland", "92951": "Sunniland", "97086": "Sunniland",
-        "97809": "Sunniland", "167411": "Sunniland", "552704": "Sunniland", "91900": "Sunniland",
-        "961539": "Sunniland", "552697": "Sunniland", "71918": "Sunniland", "94833": "Sunniland",
-        "552706": "Sunniland", "72801": "Sunniland", "101760": "Ice Melt", "1053900": "Ice Melt",
-        "45379": "Sunniland", "1240180": "Sunniland", "91299": "Sunniland", "335457": "Sunniland",
-        "147992": "Sunniland", "148054": "Sunniland"}
 
     #clean
     orders.columns = orders.columns.str.strip().str.replace("PO Line #", "PO Line#", regex=False)
@@ -118,7 +108,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["VBU Name"] = orders["VBU#"].map(vbu_mapping)
     orders["Palettes Each"] = orders["Item#"].map(palette_mapping)
     orders["Palettes"] = (orders["Qty Ordered"] / orders["Palettes Each"]).round(1)
-    orders["Item Type"] = orders["Item#"].map(item_type_mapping)
     orders["Unit Price"] = pd.to_numeric(orders["Unit Price"], errors="coerce").round(2)
     orders["Merch Total"] = (orders["Qty Ordered"] * orders["Unit Price"]).round(2)
 
@@ -188,7 +177,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders.loc[orders["Invoice Disc."] == 0, "Invoice Disc."] = ""
     orders.loc[orders["Net Invoiced"] == 0, "Net Invoiced"] = ""
 
-    progress.progress(80, text="Finalizing output...")
+    progress.progress(80, text="Putting on the finishing touches...")
 
     orders["Fulfillment Status"] = "Not Shipped"
     orders.loc[pd.notna(orders["Ship Date"]), "Fulfillment Status"] = "Shipped Not Invoiced"
@@ -202,7 +191,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str)
 
     final_cols = [
-        "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name", "Item Type",
+        "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name",
         "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To City", "Ship To State",
         "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "ASN#",
         "BOL#", "SCAC", "Invoice#", "Invoice Date", "Merch. Total", "Invoice Disc.", "Net Invoiced",
