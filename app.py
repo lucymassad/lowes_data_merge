@@ -186,16 +186,11 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Late Ship"] = pd.to_datetime(orders["Ship Date"], errors="coerce") > pd.to_datetime(orders["Requested Delivery Date"], errors="coerce")
     orders["Late Ship"] = orders["Late Ship"].map({True: "Yes", False: "No"}).fillna("")
 
-    orders["Month Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.month
-    orders["Year Filter"] = pd.to_datetime(orders["PO Date"], errors="coerce").dt.year
-    orders["Quarter Filter"] = "Q" + pd.to_datetime(orders["PO Date"], errors="coerce").dt.quarter.astype(str)
-
     final_cols = [
         "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name",
         "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To City", "Ship To State",
         "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "ASN#",
-        "BOL#", "SCAC", "Invoice#", "Invoice Date", "Merch. Total", "Invoice Disc.", "Net Invoiced",
-        "Month Filter", "Year Filter", "Quarter Filter"]
+        "BOL#", "SCAC", "Invoice#", "Invoice Date", "Merch. Total", "Invoice Disc.", "Net Invoiced"]
 
     for col in final_cols:
         if col not in orders.columns:
