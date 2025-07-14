@@ -45,13 +45,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         502232: "Milazzo", 505071: "Claymont", 505496: "Gaylord", 505085: "Spring Valley Ice Melt",
         114037: "PCI Nitrogen", 501677: "Theremorock East Inc"}
 
-    palette_mapping = {
-        "4983612": 50, "4983613": 50, "5113267": 50, "335456": 32, "552696": 32,
-        "5516714": 210, "5516716": 210, "5516715": 210, "71894": 12, "72931": 60,
-        "92951": 12, "97086": 12, "97809": 12, "167411": 4, "552704": 35,
-        "91900": 12, "961539": 50, "552697": 32, "71918": 12, "94833": 60,
-        "552706": 32, "72801": 60, "101760": 50}
-
     vendor_item_mapping = {
         "4983612": "B8110200", "4983613": "B8110300", "5113267": "B8110100", "5516714": "B8100731",
         "5516715": "B8100733", "5516716": "B8100732", "552704": "B1195010", "72931": "B1224080",
@@ -106,8 +99,6 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders["Vendor Item#"] = orders["Item#"].map(vendor_item_mapping)
     orders["VBU#"] = pd.to_numeric(orders["Vendor #"], errors="coerce")
     orders["VBU Name"] = orders["VBU#"].map(vbu_mapping)
-    orders["Palettes Each"] = orders["Item#"].map(palette_mapping)
-    orders["Palettes"] = (orders["Qty Ordered"] / orders["Palettes Each"]).round(1)
     orders["Unit Price"] = pd.to_numeric(orders["Unit Price"], errors="coerce").round(2)
     orders["Merch Total"] = (orders["Qty Ordered"] * orders["Unit Price"]).round(2)
 
@@ -188,7 +179,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
 
     final_cols = [
         "PO Number", "PO Date", "VBU#", "VBU Name", "Item#", "Vendor Item#", "Item Name",
-        "Qty Ordered", "Palettes", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To City", "Ship To State",
+        "Qty Ordered", "Unit Price", "Merch Total", "PO Line#", "Ship To Name", "Ship To City", "Ship To State",
         "Requested Delivery Date", "Fulfillment Status", "Late Ship", "ASN Date", "Ship Date", "ASN#",
         "BOL#", "SCAC", "Invoice#", "Invoice Date", "Merch. Total", "Invoice Disc.", "Net Invoiced"]
 
