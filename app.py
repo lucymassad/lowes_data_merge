@@ -24,7 +24,7 @@ uploaded_invoices = st.file_uploader("Upload Invoices File (.xlsx)", type="xlsx"
 
 #progress bar
 if uploaded_orders and uploaded_shipments and uploaded_invoices:
-    progress = st.progress(0, text="Reading Files... (yes, this part takes a moment)")
+    progress = st.progress(0, text="Reading Files... (give it a second)")
 
     orders = pd.read_excel(uploaded_orders, dtype=str)
     shipments = pd.read_excel(uploaded_shipments, dtype=str)
@@ -37,7 +37,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     if "Record Type" in invoices.columns and "Invoice purpose" in invoices.columns:
         invoices["Record Type"] = invoices["Record Type"].fillna(invoices["Invoice purpose"])
 
-    progress.progress(20, text="Cleaning Orders...")
+    progress.progress(20, text="Cleaning Order File...")
 
     #maps
     vbu_mapping = {
@@ -119,7 +119,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders = orders.sort_values(by=["PO Date Sortable", "PO Num Sort"], ascending=[False, False])
 
     #shipments
-    progress.progress(40, text="Merging Shipments...")
+    progress.progress(40, text="Merging Shipment File...")
 
     shipments = shipments.rename(columns={"PO #": "PO Number", "Buyer Item #": "Item#"})
     shipment_cols = ["PO Number", "Item#", "Location #", "ASN Date", "Ship Date", "BOL", "SCAC", "ASN #"]
@@ -136,7 +136,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "ASN #": "ASN#"}, inplace=True)
 
     #invoices
-    progress.progress(60, text="Merging Invoices...")
+    progress.progress(60, text="Merging Invoice File...")
 
     invoices = invoices.rename(columns={"Retailers PO #": "PO Number"})
     
@@ -177,7 +177,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     orders.loc[orders["Invoice Disc."] == 0, "Invoice Disc."] = ""
     orders.loc[orders["Net Invoiced"] == 0, "Net Invoiced"] = ""
 
-    progress.progress(80, text="Putting on the finishing touches...")
+    progress.progress(80, text="Adding finishing touches...")
 
     orders["Fulfillment Status"] = "Not Shipped"
     orders.loc[pd.notna(orders["Ship Date"]), "Fulfillment Status"] = "Shipped Not Invoiced"
