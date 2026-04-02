@@ -43,7 +43,7 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
     vbu_mapping = {
         118871: "Fostoria", 118872: "Jackson", 503177: "Longwood", 503255: "Greenville",
         502232: "Milazzo", 505071: "Claymont", 505496: "Gaylord", 505085: "Spring Valley Ice Melt",
-        114037: "PCI Nitrogen", 501677: "Theremorock East Inc"}
+        114037: "PCI Nitrogen", 501677: "Theremorock"}
 
     vendor_item_mapping = {
         "4983612": "B8110200", "4983613": "B8110300", "5113267": "B8110100", "5516714": "B8100731",
@@ -55,7 +55,8 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "335457": "B2241150", "1240180": "B1242620", "97809": "B1201460", "167411": "B1237440",
         "335456": "B1195080", "197914": "B1195060", "552706": "B1195050", "552696": "B1195020",
         "552697": "B1195040", "45379": "B1200190", "4350231": "B4973300", "758650": "B4905600",
-        "243942": "B4904900"}
+        "243942": "B4904900", "6924529": "I0000464", "6923046": "B8110500", "6924530": "I0000465", 
+        "6647741": "B8110400", "1058717": "B1258730"}
 
 
     #clean
@@ -160,15 +161,14 @@ if uploaded_orders and uploaded_shipments and uploaded_invoices:
         "Discounted Amounted_Discount Amount": "Invoice Disc."})
 
     orders = orders.merge(invoice_grouped, on="PO Number", how="left", validate="many_to_one")
-
-    orders["Merch. Total"] = pd.to_numeric(orders["Merch. Total"], errors="coerce").fillna(0)
-    orders["Invoice Disc."] = pd.to_numeric(orders["Invoice Disc."], errors="coerce").fillna(0)
+    
+    orders["Merch. Total"] = pd.to_numeric(orders["Merch. Total"], errors="coerce")
+    orders["Invoice Disc."] = pd.to_numeric(orders["Invoice Disc."], errors="coerce")
     orders["Net Invoiced"] = (orders["Merch. Total"] - orders["Invoice Disc."]).round(2)
-
-    #turn 0s to blanks
-    orders.loc[orders["Merch. Total"] == 0, "Merch. Total"] = ""
-    orders.loc[orders["Invoice Disc."] == 0, "Invoice Disc."] = ""
-    orders.loc[orders["Net Invoiced"] == 0, "Net Invoiced"] = ""
+    
+    # turn zeros into missing values (display/export as blanks later)
+    for _col in ["Merch. Total", "Invoice Disc.", "Net Invoiced"]:
+        orders[_col] = orders[_col].mask(orders[_col].eq(0))
 
     progress.progress(80, text="Adding finishing touches...")
 
